@@ -1,0 +1,88 @@
+# Binarios
+*.exe
+*.exe~
+*.dll
+*.so
+*.so.*
+*.dylib
+bin/
+dist/
+
+# Carpetas
+.DS_Store
+node_modules/
+dist/
+build/
+vendor/
+
+# Go
+go.sum
+go.mod.tidy
+*.test
+*.out
+*.swp
+*.swo
+*~
+.air.log
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+.DS_Store
+*.iml
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+.classpath
+.c9/
+*.launch
+.nrepl-port
+.LSOverride
+.AppleDouble
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+postgres_data/
+
+# Logs
+logs/
+*.log
+*.logs
+
+# Misc
+tmp/
+temp/
+cache/
+.cache/
+
+# Frontend
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.env.local
+
+# Docker
+docker_data/
+postgres_data/
+
+# Testing
+.coverage
+coverage.out
+*.cover
