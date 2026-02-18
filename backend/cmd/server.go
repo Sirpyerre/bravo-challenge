@@ -4,8 +4,9 @@ import (
 	"context"
 	"os"
 
-	"github.com/Sirpyerre/bravo-challenge/internal/application/healthcheck"
 	"github.com/Sirpyerre/bravo-challenge/internal/application/auth"
+	"github.com/Sirpyerre/bravo-challenge/internal/application/credit"
+	"github.com/Sirpyerre/bravo-challenge/internal/application/healthcheck"
 	"github.com/Sirpyerre/bravo-challenge/internal/config"
 	"github.com/Sirpyerre/bravo-challenge/internal/repository"
 	"github.com/Sirpyerre/bravo-challenge/internal/service"
@@ -77,12 +78,15 @@ func newServer(cfg *config.Config) *server {
 
 	// Repositories
 	userRepo := repository.NewUserRepository(db)
+	appRepo := repository.NewApplicationRepository(db)
 
 	// Services
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
+	appService := service.NewApplicationService(appRepo)
 
 	// Handlers
 	authHandler := auth.NewHandler(authService)
+	creditHandler := credit.NewHandler(appService)
 	depChecker := &healthcheck.DependencyChecker{
 		DB:       db,
 		Redis:    rdb,
@@ -93,7 +97,7 @@ func newServer(cfg *config.Config) *server {
 	e.HideBanner = true
 
 	registerMiddleware(e, cfg, log)
-	registerRoutes(e, depChecker, authHandler, authService)
+	registerRoutes(e, depChecker, authHandler, creditHandler, authService)
 
 	return &server{
 		echo:     e,
