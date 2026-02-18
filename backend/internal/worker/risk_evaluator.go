@@ -89,7 +89,7 @@ func (w *RiskEvaluator) handle(ctx context.Context, body []byte) error {
 	if err != nil {
 		w.logger.Error().Err(err).Msg("bank evaluation failed")
 		// Marcar como DENIED si el banco no responde
-		w.appRepo.UpdateRiskAndStatus(ctx, app.ID, domain.StatusDenied, domain.RiskHigh)
+		w.appRepo.UpdateRiskAndStatus(ctx, app.ID, domain.StatusDenied, domain.RiskHigh, "Error al contactar banco")
 		return err
 	}
 
@@ -99,7 +99,7 @@ func (w *RiskEvaluator) handle(ctx context.Context, body []byte) error {
 	}
 
 	riskLevel := parseRiskLevel(bankResp.RiskLevel)
-	if err := w.appRepo.UpdateRiskAndStatus(ctx, app.ID, status, riskLevel); err != nil {
+	if err := w.appRepo.UpdateRiskAndStatus(ctx, app.ID, status, riskLevel, bankResp.Reason); err != nil {
 		return fmt.Errorf("update application: %w", err)
 	}
 

@@ -38,7 +38,7 @@ func (m *mockAppRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status dom
 	return nil
 }
 
-func (m *mockAppRepo) UpdateRiskAndStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, risk domain.RiskLevel) error {
+func (m *mockAppRepo) UpdateRiskAndStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, risk domain.RiskLevel, bankReason string) error {
 	return nil
 }
 
