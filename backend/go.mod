@@ -4,6 +4,7 @@ go 1.25.6
 
 require (
 	github.com/labstack/echo/v4 v4.15.0
+	github.com/rs/zerolog v1.34.0
 	github.com/sethvargo/go-envconfig v1.3.0
 )
 

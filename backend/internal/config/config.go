@@ -28,8 +28,8 @@ type Config struct {
 	BankURLs map[string]string
 
 	// Logging
-	LogLevel  string
-	LogFormat string
+	LogLevel  string `env:"LOG_LEVEL,default=info"`
+	LogFormat string `env:"LOG_FORMAT,default=json"`
 
 	// CORS
 	CORSAllowedOrigins []string
