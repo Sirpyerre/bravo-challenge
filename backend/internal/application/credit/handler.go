@@ -22,7 +22,6 @@ func (h *Handler) Create(c echo.Context) error {
 	if !ok {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"message": "usuario no autenticado"})
 	}
-
 	var req service.CreateApplicationRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": "request inválido"})

@@ -8,6 +8,7 @@ import (
 	"github.com/Sirpyerre/bravo-challenge/internal/application/credit"
 	"github.com/Sirpyerre/bravo-challenge/internal/application/healthcheck"
 	"github.com/Sirpyerre/bravo-challenge/internal/config"
+	"github.com/Sirpyerre/bravo-challenge/internal/idempotency"
 	"github.com/Sirpyerre/bravo-challenge/internal/repository"
 	"github.com/Sirpyerre/bravo-challenge/internal/service"
 	"github.com/Sirpyerre/bravo-challenge/pkg/database"
@@ -79,10 +80,12 @@ func newServer(cfg *config.Config) *server {
 	// Repositories
 	userRepo := repository.NewUserRepository(db)
 	appRepo := repository.NewApplicationRepository(db)
+	idempotencyRepo := repository.NewIdempotencyRepository(db)
 
 	// Services
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
 	appService := service.NewApplicationService(appRepo)
+	idempotencySvc := idempotency.NewService(rdb, idempotencyRepo, cfg.IdempotencyTTL)
 
 	// Handlers
 	authHandler := auth.NewHandler(authService)
@@ -97,7 +100,7 @@ func newServer(cfg *config.Config) *server {
 	e.HideBanner = true
 
 	registerMiddleware(e, cfg, log)
-	registerRoutes(e, depChecker, authHandler, creditHandler, authService)
+	registerRoutes(e, depChecker, authHandler, creditHandler, authService, idempotencySvc)
 
 	return &server{
 		echo:     e,

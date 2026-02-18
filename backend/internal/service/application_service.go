@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/Sirpyerre/bravo-challenge/internal/domain"
 	"github.com/Sirpyerre/bravo-challenge/internal/repository"
@@ -45,6 +46,7 @@ func NewApplicationService(appRepo repository.ApplicationRepository) *Applicatio
 
 func (s *ApplicationService) Create(ctx context.Context, userID uuid.UUID, req CreateApplicationRequest) (*domain.Application, error) {
 	// Validar campos requeridos
+	log.Println("country", req.Country, ", fullName", req.FullName, "identity", req.IdentityDocument)
 	if req.Country == "" || req.FullName == "" || req.IdentityDocument == "" {
 		return nil, fmt.Errorf("country, full_name e identity_document son requeridos")
 	}
@@ -59,10 +61,12 @@ func (s *ApplicationService) Create(ctx context.Context, userID uuid.UUID, req C
 	}
 
 	if err := validator.ValidateIdentityDocument(req.IdentityDocument); err != nil {
+		log.Println("validation error:", err)
 		return nil, err
 	}
 
 	if err := validator.ValidateAmount(req.MonthlyIncome, req.RequestedAmount); err != nil {
+		log.Println("validation error:", err)
 		return nil, err
 	}
 
