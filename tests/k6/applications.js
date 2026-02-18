@@ -17,6 +17,10 @@ export const options = {
 
 const BASE_URL = __ENV.BASE_URL || "http://localhost:8000";
 
+function formatDate(date) {
+  return date.toISOString().split("T")[0];
+}
+
 function register(email, password) {
   const res = http.post(
     `${BASE_URL}/auth/register`,
@@ -167,6 +171,22 @@ export default function () {
     );
     check(res, {
       "filtered list status 200": (r) => r.status === 200,
+    });
+  });
+
+  group("list applications with date range", () => {
+    const from = new Date();
+    from.setDate(from.getDate() - 1);
+    const to = new Date();
+    to.setDate(to.getDate() + 1);
+
+    const res = http.get(
+      `${BASE_URL}/api/v1/applications?from_date=${formatDate(from)}&to_date=${formatDate(to)}`,
+      authHeaders(token, null)
+    );
+    check(res, {
+      "date range status 200": (r) => r.status === 200,
+      "date range returns apps": (r) => Array.isArray(JSON.parse(r.body).applications),
     });
   });
 

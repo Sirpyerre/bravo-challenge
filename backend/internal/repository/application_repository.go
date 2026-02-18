@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Sirpyerre/bravo-challenge/internal/domain"
 	"github.com/google/uuid"
@@ -14,7 +15,7 @@ import (
 type ApplicationRepository interface {
 	Create(ctx context.Context, app *domain.Application) error
 	FindByID(ctx context.Context, id uuid.UUID) (*domain.Application, error)
-	FindByUserID(ctx context.Context, userID uuid.UUID, country, status string, limit, offset int) ([]domain.Application, int, error)
+	FindByUserID(ctx context.Context, userID uuid.UUID, country, status string, fromDate, toDate *time.Time, limit, offset int) ([]domain.Application, int, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, notes *string) error
 	UpdateRiskAndStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, riskLevel domain.RiskLevel, bankReason string) error
 }
@@ -64,7 +65,7 @@ func (r *applicationRepository) FindByID(ctx context.Context, id uuid.UUID) (*do
 	return &app, nil
 }
 
-func (r *applicationRepository) FindByUserID(ctx context.Context, userID uuid.UUID, country, status string, limit, offset int) ([]domain.Application, int, error) {
+func (r *applicationRepository) FindByUserID(ctx context.Context, userID uuid.UUID, country, status string, fromDate, toDate *time.Time, limit, offset int) ([]domain.Application, int, error) {
 	// Consulta de conteo
 	countQuery := `SELECT COUNT(*) FROM applications WHERE user_id = $1`
 	args := []any{userID}
@@ -78,6 +79,16 @@ func (r *applicationRepository) FindByUserID(ctx context.Context, userID uuid.UU
 	if status != "" {
 		countQuery += fmt.Sprintf(" AND status = $%d", argIdx)
 		args = append(args, status)
+		argIdx++
+	}
+	if fromDate != nil {
+		countQuery += fmt.Sprintf(" AND created_at >= $%d", argIdx)
+		args = append(args, *fromDate)
+		argIdx++
+	}
+	if toDate != nil {
+		countQuery += fmt.Sprintf(" AND created_at <= $%d", argIdx)
+		args = append(args, *toDate)
 		argIdx++
 	}
 
@@ -103,6 +114,16 @@ func (r *applicationRepository) FindByUserID(ctx context.Context, userID uuid.UU
 	if status != "" {
 		dataQuery += fmt.Sprintf(" AND status = $%d", dataIdx)
 		dataArgs = append(dataArgs, status)
+		dataIdx++
+	}
+	if fromDate != nil {
+		dataQuery += fmt.Sprintf(" AND created_at >= $%d", dataIdx)
+		dataArgs = append(dataArgs, *fromDate)
+		dataIdx++
+	}
+	if toDate != nil {
+		dataQuery += fmt.Sprintf(" AND created_at <= $%d", dataIdx)
+		dataArgs = append(dataArgs, *toDate)
 		dataIdx++
 	}
 

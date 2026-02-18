@@ -32,10 +32,12 @@ type UpdateApplicationRequest struct {
 }
 
 type ListApplicationsRequest struct {
-	Country string
-	Status  string
-	Limit   int
-	Offset  int
+	Country  string
+	Status   string
+	FromDate *time.Time
+	ToDate   *time.Time
+	Limit    int
+	Offset   int
 }
 
 type ListApplicationsResponse struct {
@@ -120,7 +122,11 @@ func (s *ApplicationService) List(ctx context.Context, userID uuid.UUID, req Lis
 		req.Limit = 100
 	}
 
-	apps, total, err := s.appRepo.FindByUserID(ctx, userID, req.Country, req.Status, req.Limit, req.Offset)
+	if req.FromDate != nil && req.ToDate != nil && req.ToDate.Before(*req.FromDate) {
+		return nil, fmt.Errorf("to_date no puede ser anterior a from_date")
+	}
+
+	apps, total, err := s.appRepo.FindByUserID(ctx, userID, req.Country, req.Status, req.FromDate, req.ToDate, req.Limit, req.Offset)
 	if err != nil {
 		return nil, fmt.Errorf("listar solicitudes: %w", err)
 	}

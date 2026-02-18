@@ -3,6 +3,7 @@ package credit
 import (
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/Sirpyerre/bravo-challenge/internal/service"
 	"github.com/google/uuid"
@@ -44,16 +45,36 @@ func (h *Handler) List(c echo.Context) error {
 	limit, _ := strconv.Atoi(c.QueryParam("limit"))
 	offset, _ := strconv.Atoi(c.QueryParam("offset"))
 
+	var fromDate *time.Time
+	if v := c.QueryParam("from_date"); v != "" {
+		parsed, err := time.Parse("2006-01-02", v)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"message": "from_date debe tener formato YYYY-MM-DD"})
+		}
+		fromDate = &parsed
+	}
+
+	var toDate *time.Time
+	if v := c.QueryParam("to_date"); v != "" {
+		parsed, err := time.Parse("2006-01-02", v)
+		if err != nil {
+			return c.JSON(http.StatusBadRequest, map[string]string{"message": "to_date debe tener formato YYYY-MM-DD"})
+		}
+		toDate = &parsed
+	}
+
 	req := service.ListApplicationsRequest{
-		Country: c.QueryParam("country"),
-		Status:  c.QueryParam("status"),
-		Limit:   limit,
-		Offset:  offset,
+		Country:  c.QueryParam("country"),
+		Status:   c.QueryParam("status"),
+		FromDate: fromDate,
+		ToDate:   toDate,
+		Limit:    limit,
+		Offset:   offset,
 	}
 
 	resp, err := h.appService.List(c.Request().Context(), userID, req)
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"message": err.Error()})
+		return c.JSON(http.StatusBadRequest, map[string]string{"message": err.Error()})
 	}
 
 	return c.JSON(http.StatusOK, resp)
