@@ -1,23 +1,27 @@
-# Frontend Bravo Realtime
+# Frontend Bravo Dashboard (Vite + React + Tailwind)
 
-Frontend ligero (HTML + JS) para crear, listar, ver detalle y actualizar solicitudes con actualizaciones en tiempo real vía WebSocket.
+Dashboard con rutas protegidas, Auth persistente (JWT), listado de solicitudes, creación y actualización de estado, y eventos en tiempo real vía WebSocket.
 
-## Ejecutar
+## Setup
 
 ```bash
-# desde la raíz del repo
-cd frontend/src
-python -m http.server 5173
-# abre http://localhost:5173
+cd frontend
+npm install
+
+# variables
+echo "VITE_API_BASE_URL=http://localhost:8000" > .env.development
+
+# desarrollo
+npm run dev -- --host
 ```
 
-- Ajusta `Base URL` en la UI si tu backend no corre en `http://localhost:8080`.
-- Regístrate o haz login para obtener el token JWT; el WebSocket se conecta con ese token.
-- Usa los filtros `country`, `status`, `from_date`, `to_date`, `limit`, `offset` para listar.
+Abre `http://localhost:5173` (o el puerto que indique Vite). El backend debe estar corriendo en el puerto definido por `VITE_API_BASE_URL`.
 
-## Funcionalidad
-- Registro y login.
-- Crear solicitud (usa Idempotency-Key aleatoria).
-- Listar con filtros incluyendo rango de fechas.
-- Ver detalle y actualizar estado.
-- Panel de eventos en tiempo real usando `/ws`.
+## Características
+- Login/registro y sesión persistente en localStorage.
+- Axios con interceptor `Authorization: Bearer <token>` y auto-logout en 401.
+- Layout de dashboard con sidebar, header e indicador de realtime.
+- Listado con filtros (país, estado, from_date, to_date, límite, offset) usando React Query.
+- Creación con validación básica y Idempotency-Key automática.
+- Drawer de detalle con actualización de estado.
+- WebSocket para refrescar y resaltar filas; toasts en cambios.

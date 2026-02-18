@@ -1,0 +1,53 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: #0b1221;
+  color: #e7edf7;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #1f2d4a; border-radius: 999px; }
+
+.card { @apply bg-card border border-border rounded-lg shadow-card; }
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed;
+}
+.btn-primary { @apply bg-accent text-slate-900 hover:brightness-110; }
+.btn-ghost { @apply bg-transparent border border-border text-muted hover:text-white; }
+
+.input {
+  @apply w-full rounded-lg border border-border bg-[#0d1526] px-3 py-2 text-sm text-white placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-accent/50;
+}
+
+.label { @apply text-xs uppercase tracking-wide text-muted; }
+
+.badge {
+  @apply inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold;
+}
+.badge.PENDING { @apply bg-[#2b2110] text-warning; }
+.badge.VALIDATING { @apply bg-[#12332b] text-accent; }
+.badge.APPROVED { @apply bg-[#12392a] text-success; }
+.badge.DENIED { @apply bg-[#331616] text-danger; }
+
+.table { @apply w-full border-collapse text-sm; }
+.table th { @apply text-left text-muted border-b border-border pb-2; }
+.table td { @apply border-b border-border py-2; }
+.table tr:hover { @apply bg-accent/5; }
+
+.drawer {
+  @apply fixed inset-y-0 right-0 w-full max-w-xl bg-card border-l border-border shadow-2xl transform transition-transform duration-300;
+}
+
+.toast-success { @apply text-success; }
+.toast-error { @apply text-danger; }
