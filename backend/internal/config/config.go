@@ -10,9 +10,9 @@ import (
 
 type Config struct {
 	// Server
-	Port        string
-	Env         string
-	FrontendURL string
+	Port        string `env:"PORT,default=8080"`
+	Env         string `env:"ENV,default=development"`
+	FrontendURL string `env:"FRONTEND_URL"`
 	// Database
 	DB DBConfig
 	// JWT

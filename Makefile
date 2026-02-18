@@ -50,7 +50,7 @@ docker-logs:
 
 # Backend commands
 run: docker-up
-	cd $(BACKEND_DIR) && go run ./cmd/
+	set -a && . ./.env && set +a && cd $(BACKEND_DIR) && go run ./cmd/
 
 build:
 	cd $(BACKEND_DIR) && CGO_ENABLED=1 go build -o ./bin/bravo-api ./cmd/
