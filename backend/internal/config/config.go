@@ -16,28 +16,28 @@ type Config struct {
 	// Database
 	DB DBConfig
 	// JWT
-	JWTSecret string
+	JWTSecret string `env:"JWT_SECRET,required"`
 
 	// RabbitMQ
 	RabbitMQ RabbitMQConfig
 
 	// Redis
-	RedisConfig RedisConfig
+	Redis RedisConfig
 
 	// Bank URLs
-	BankURLs map[string]string
+	BankURLs BankURLsConfig
 
 	// Logging
 	LogLevel  string `env:"LOG_LEVEL,default=info"`
 	LogFormat string `env:"LOG_FORMAT,default=json"`
 
 	// CORS
-	CORSAllowedOrigins []string
+	CORSAllowedOrigins []string `env:"CORS_ALLOWED_ORIGINS"`
 
 	// Application
-	MaxRetries     int
-	RequestTimeout time.Duration
-	IdempotencyTTL time.Duration
+	MaxRetries     int           `env:"MAX_RETRIES,default=3"`
+	RequestTimeout time.Duration `env:"REQUEST_TIMEOUT,default=30s"`
+	IdempotencyTTL time.Duration `env:"IDEMPOTENCY_TTL,default=24h"`
 }
 
 type DBConfig struct {
@@ -65,6 +65,15 @@ type RedisConfig struct {
 	Port     int    `env:"REDIS_PORT,default=6379"`
 	Password string `env:"REDIS_PASSWORD"`
 	DB       int    `env:"REDIS_DB,default=0"`
+}
+
+type BankURLsConfig struct {
+	ESP string `env:"ESP_BANK_URL,default=http://localhost:8080/esp"`
+	PT  string `env:"PT_BANK_URL,default=http://localhost:8080/pt"`
+	IT  string `env:"IT_BANK_URL,default=http://localhost:8080/it"`
+	MX  string `env:"MX_BANK_URL,default=http://localhost:8080/mx"`
+	CO  string `env:"CO_BANK_URL,default=http://localhost:8080/co"`
+	BR  string `env:"BR_BANK_URL,default=http://localhost:8080/br"`
 }
 
 func Load() *Config {
