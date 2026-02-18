@@ -7,10 +7,11 @@ import (
 	"github.com/Sirpyerre/bravo-challenge/internal/idempotency"
 	appmiddleware "github.com/Sirpyerre/bravo-challenge/internal/middleware"
 	"github.com/Sirpyerre/bravo-challenge/internal/service"
+	appwebsocket "github.com/Sirpyerre/bravo-challenge/internal/websocket"
 	"github.com/labstack/echo/v4"
 )
 
-func registerRoutes(e *echo.Echo, depChecker *healthcheck.DependencyChecker, authHandler *auth.Handler, creditHandler *credit.Handler, authService *service.AuthService, idempotencySvc *idempotency.Service) {
+func registerRoutes(e *echo.Echo, depChecker *healthcheck.DependencyChecker, authHandler *auth.Handler, creditHandler *credit.Handler, wsHandler *appwebsocket.Handler, authService *service.AuthService, idempotencySvc *idempotency.Service) {
 	// Health probes
 	e.GET("/health", healthcheck.HealthHandler)
 	e.GET("/health_dependencies", depChecker.HealthDependenciesHandler)
@@ -19,6 +20,9 @@ func registerRoutes(e *echo.Echo, depChecker *healthcheck.DependencyChecker, aut
 	authGroup := e.Group("/auth")
 	authGroup.POST("/register", authHandler.Register)
 	authGroup.POST("/login", authHandler.Login)
+
+	// WebSocket (token via query param)
+	e.GET("/ws", wsHandler.Connect)
 
 	// API v1 (protegido con JWT)
 	api := e.Group("/api/v1", appmiddleware.JWTAuth(authService))

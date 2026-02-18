@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"os"
 
 	"github.com/Sirpyerre/bravo-challenge/internal/application/auth"
 	"github.com/Sirpyerre/bravo-challenge/internal/application/credit"
@@ -11,6 +10,8 @@ import (
 	"github.com/Sirpyerre/bravo-challenge/internal/idempotency"
 	"github.com/Sirpyerre/bravo-challenge/internal/repository"
 	"github.com/Sirpyerre/bravo-challenge/internal/service"
+	appwebsocket "github.com/Sirpyerre/bravo-challenge/internal/websocket"
+	"github.com/Sirpyerre/bravo-challenge/internal/worker"
 	"github.com/Sirpyerre/bravo-challenge/pkg/database"
 	"github.com/Sirpyerre/bravo-challenge/pkg/logger"
 	pkgrabbit "github.com/Sirpyerre/bravo-challenge/pkg/rabbitmq"
@@ -24,12 +25,16 @@ import (
 )
 
 type server struct {
-	echo     *echo.Echo
-	cfg      *config.Config
-	logger   zerolog.Logger
-	db       *pgxpool.Pool
-	redis    *redis.Client
-	rabbitmq *amqp.Connection
+	echo         *echo.Echo
+	cfg          *config.Config
+	logger       zerolog.Logger
+	db           *pgxpool.Pool
+	redis        *redis.Client
+	rabbitmq     *amqp.Connection
+	riskWorker   *worker.RiskEvaluator
+	auditWorker  *worker.Auditor
+	notifyWorker *worker.Notifier
+	wsHub        *appwebsocket.Hub
 }
 
 func newServer(cfg *config.Config) *server {
@@ -81,15 +86,30 @@ func newServer(cfg *config.Config) *server {
 	userRepo := repository.NewUserRepository(db)
 	appRepo := repository.NewApplicationRepository(db)
 	idempotencyRepo := repository.NewIdempotencyRepository(db)
+	auditRepo := repository.NewAuditRepository(db)
+	processedRepo := repository.NewProcessedEventRepository(db)
+
+	// RabbitMQ publisher/consumers
+	publisher := pkgrabbit.NewPublisher(rmq)
+	consumer := pkgrabbit.NewConsumer(rmq)
 
 	// Services
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
-	appService := service.NewApplicationService(appRepo)
+	appService := service.NewApplicationService(appRepo, publisher)
 	idempotencySvc := idempotency.NewService(rdb, idempotencyRepo, cfg.IdempotencyTTL)
+
+	// WebSocket hub
+	wsHub := appwebsocket.NewHub()
+
+	// Workers
+	riskWorker := worker.NewRiskEvaluator(consumer, publisher, appRepo, processedRepo, cfg.BankURLs, log)
+	auditWorker := worker.NewAuditor(pkgrabbit.NewConsumer(rmq), auditRepo, processedRepo, log)
+	notifyWorker := worker.NewNotifier(pkgrabbit.NewConsumer(rmq), processedRepo, wsHub, log)
 
 	// Handlers
 	authHandler := auth.NewHandler(authService)
 	creditHandler := credit.NewHandler(appService)
+	wsHandler := appwebsocket.NewHandler(wsHub, authService)
 	depChecker := &healthcheck.DependencyChecker{
 		DB:       db,
 		Redis:    rdb,
@@ -100,15 +120,19 @@ func newServer(cfg *config.Config) *server {
 	e.HideBanner = true
 
 	registerMiddleware(e, cfg, log)
-	registerRoutes(e, depChecker, authHandler, creditHandler, authService, idempotencySvc)
+	registerRoutes(e, depChecker, authHandler, creditHandler, wsHandler, authService, idempotencySvc)
 
 	return &server{
-		echo:     e,
-		cfg:      cfg,
-		logger:   log,
-		db:       db,
-		redis:    rdb,
-		rabbitmq: rmq,
+		echo:         e,
+		cfg:          cfg,
+		logger:       log,
+		db:           db,
+		redis:        rdb,
+		rabbitmq:     rmq,
+		riskWorker:   riskWorker,
+		auditWorker:  auditWorker,
+		notifyWorker: notifyWorker,
+		wsHub:        wsHub,
 	}
 }
 
@@ -151,12 +175,24 @@ func registerMiddleware(e *echo.Echo, cfg *config.Config, log zerolog.Logger) {
 	}))
 }
 
+func (s *server) startWorkers(ctx context.Context) {
+	if err := s.riskWorker.Start(ctx); err != nil {
+		s.logger.Fatal().Err(err).Msg("failed to start risk evaluator worker")
+	}
+	if err := s.auditWorker.Start(ctx); err != nil {
+		s.logger.Fatal().Err(err).Msg("failed to start auditor worker")
+	}
+	if err := s.notifyWorker.Start(ctx); err != nil {
+		s.logger.Fatal().Err(err).Msg("failed to start notifier worker")
+	}
+	s.logger.Info().Msg("workers started")
+}
+
 func (s *server) start() {
 	addr := ":" + s.cfg.Port
 	s.logger.Info().Str("addr", addr).Msg("server starting")
 	if err := s.echo.Start(addr); err != nil {
-		s.logger.Fatal().Err(err).Msg("server failed to start")
-		os.Exit(1)
+		s.logger.Info().Msg("server stopped")
 	}
 }
 

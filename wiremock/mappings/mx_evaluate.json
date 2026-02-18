@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPattern": "/mx/evaluate"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "approved": true,
+      "risk_level": "LOW",
+      "reason": "Perfil crediticio favorable para México"
+    }
+  }
+}

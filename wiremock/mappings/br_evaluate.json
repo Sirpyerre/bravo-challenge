@@ -1,0 +1,15 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPattern": "/br/evaluate"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "approved": true,
+      "risk_level": "MEDIUM",
+      "reason": "Perfil crediticio favorable para Brasil"
+    }
+  }
+}

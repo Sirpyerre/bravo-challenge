@@ -16,6 +16,7 @@ type ApplicationRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*domain.Application, error)
 	FindByUserID(ctx context.Context, userID uuid.UUID, country, status string, limit, offset int) ([]domain.Application, int, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, notes *string) error
+	UpdateRiskAndStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, riskLevel domain.RiskLevel) error
 }
 
 type applicationRepository struct {
@@ -139,6 +140,22 @@ func (r *applicationRepository) UpdateStatus(ctx context.Context, id uuid.UUID, 
 	result, err := r.db.Exec(ctx, query, status, notes, id)
 	if err != nil {
 		return fmt.Errorf("update application status: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("application not found")
+	}
+	return nil
+}
+
+func (r *applicationRepository) UpdateRiskAndStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, riskLevel domain.RiskLevel) error {
+	query := `
+		UPDATE applications
+		SET status = $1, risk_level = $2, updated_at = NOW()
+		WHERE id = $3`
+
+	result, err := r.db.Exec(ctx, query, status, riskLevel, id)
+	if err != nil {
+		return fmt.Errorf("update application risk and status: %w", err)
 	}
 	if result.RowsAffected() == 0 {
 		return fmt.Errorf("application not found")

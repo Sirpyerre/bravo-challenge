@@ -10,6 +10,7 @@ type Event struct {
 	ID            string    `json:"id"`
 	Type          string    `json:"type"`
 	ApplicationID uuid.UUID `json:"application_id"`
+	UserID        uuid.UUID `json:"user_id"`
 	Data          any       `json:"data,omitempty"`
 	CreatedAt     time.Time `json:"created_at"`
 }

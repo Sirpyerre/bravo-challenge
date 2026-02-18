@@ -2,17 +2,20 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"log"
+	"time"
 
 	"github.com/Sirpyerre/bravo-challenge/internal/domain"
 	"github.com/Sirpyerre/bravo-challenge/internal/repository"
 	"github.com/Sirpyerre/bravo-challenge/internal/validation"
+	"github.com/Sirpyerre/bravo-challenge/pkg/rabbitmq"
 	"github.com/google/uuid"
 )
 
 type ApplicationService struct {
-	appRepo repository.ApplicationRepository
+	appRepo   repository.ApplicationRepository
+	publisher *rabbitmq.Publisher
 }
 
 type CreateApplicationRequest struct {
@@ -40,13 +43,11 @@ type ListApplicationsResponse struct {
 	Total        int                  `json:"total"`
 }
 
-func NewApplicationService(appRepo repository.ApplicationRepository) *ApplicationService {
-	return &ApplicationService{appRepo: appRepo}
+func NewApplicationService(appRepo repository.ApplicationRepository, publisher *rabbitmq.Publisher) *ApplicationService {
+	return &ApplicationService{appRepo: appRepo, publisher: publisher}
 }
 
 func (s *ApplicationService) Create(ctx context.Context, userID uuid.UUID, req CreateApplicationRequest) (*domain.Application, error) {
-	// Validar campos requeridos
-	log.Println("country", req.Country, ", fullName", req.FullName, "identity", req.IdentityDocument)
 	if req.Country == "" || req.FullName == "" || req.IdentityDocument == "" {
 		return nil, fmt.Errorf("country, full_name e identity_document son requeridos")
 	}
@@ -54,19 +55,14 @@ func (s *ApplicationService) Create(ctx context.Context, userID uuid.UUID, req C
 		return nil, fmt.Errorf("monthly_income y requested_amount deben ser mayores a 0")
 	}
 
-	// Validación por país
 	validator, err := validation.NewValidator(req.Country)
 	if err != nil {
 		return nil, err
 	}
-
 	if err := validator.ValidateIdentityDocument(req.IdentityDocument); err != nil {
-		log.Println("validation error:", err)
 		return nil, err
 	}
-
 	if err := validator.ValidateAmount(req.MonthlyIncome, req.RequestedAmount); err != nil {
-		log.Println("validation error:", err)
 		return nil, err
 	}
 
@@ -84,7 +80,25 @@ func (s *ApplicationService) Create(ctx context.Context, userID uuid.UUID, req C
 		return nil, fmt.Errorf("crear solicitud: %w", err)
 	}
 
+	// Publicar evento para procesamiento asíncrono
+	s.publishEvent("application.created", domain.Event{
+		ID:            uuid.New().String(),
+		Type:          "application.created",
+		ApplicationID: app.ID,
+		UserID:        app.UserID,
+		Data:          app,
+		CreatedAt:     time.Now(),
+	})
+
 	return app, nil
+}
+
+func (s *ApplicationService) publishEvent(routingKey string, event domain.Event) {
+	data, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
+	s.publisher.Publish(routingKey, data)
 }
 
 func (s *ApplicationService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Application, error) {
