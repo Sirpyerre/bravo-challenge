@@ -16,11 +16,24 @@ func TestMXValidator_ValidateIdentityDocument(t *testing.T) {
 		doc     string
 		wantErr bool
 	}{
-		{"valid CURP", "LOOE890101HDFPSL09", false},
+		// Válidos
+		{"valid CURP - DF", "LOOE890101HDFPSL09", false},
+		{"valid CURP - MC", "GOSA880515MMCRRN05", false},
+		// Formato incorrecto
 		{"too short", "LOOE890101", true},
 		{"lowercase", "looe890101hdfpsl09", true},
 		{"empty", "", true},
-		{"wrong format - no sex indicator", "LOOE890101XDFPSL09", true},
+		{"wrong sex indicator", "LOOE890101XDFPSL09", true},
+		// Estado inválido
+		{"unknown state XX", "LOOE890101HXXPSL09", true},
+		{"unknown state ZZ", "LOOE890101HZZPSL09", true},
+		// Mes inválido
+		{"month 00", "LOOE891300HDFPSL09", true},
+		{"month 13", "LOOE891301HDFPSL09", true},
+		// Día inválido
+		{"day 00", "LOOE890100HDFPSL09", true},
+		{"day 32", "LOOE890132HDFPSL09", true},
+		{"feb day 30", "LOOE890230HDFPSL09", true},
 	}
 
 	for _, tt := range tests {
@@ -69,11 +82,21 @@ func TestBRValidator_ValidateIdentityDocument(t *testing.T) {
 		doc     string
 		wantErr bool
 	}{
-		{"valid CPF 11 digits", "12345678901", false},
+		// CPFs válidos (dígitos verificadores correctos)
+		{"valid CPF", "11144477735", false},
+		{"valid CPF 2", "52998224725", false},
+		// Formato inválido
 		{"too short", "1234567890", true},
 		{"too long", "123456789012", true},
 		{"contains letters", "1234567890A", true},
 		{"empty", "", true},
+		// Dígitos iguales (inválidos)
+		{"all zeros", "00000000000", true},
+		{"all ones", "11111111111", true},
+		{"all nines", "99999999999", true},
+		// Dígito verificador incorrecto
+		{"wrong check digit", "12345678900", true},
+		{"wrong check digit 2", "52998224724", true},
 	}
 
 	for _, tt := range tests {

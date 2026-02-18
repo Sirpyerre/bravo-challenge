@@ -40,7 +40,7 @@ const TEST_CASES = [
   },
   {
     country: "BR",
-    identity_document: "12345678901",
+    identity_document: "52998224725",
     monthly_income: 8000,
     requested_amount: 15000,
   },
