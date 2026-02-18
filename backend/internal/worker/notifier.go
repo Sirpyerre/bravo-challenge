@@ -58,6 +58,7 @@ func (w *Notifier) handle(ctx context.Context, body []byte) error {
 
 	w.logger.Info().
 		Str("application_id", event.ApplicationID.String()).
+		Str("user_id", event.UserID.String()).
 		Str("event_type", event.Type).
 		Interface("data", event.Data).
 		Msg("notificación enviada (placeholder)")
