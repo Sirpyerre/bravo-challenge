@@ -4,8 +4,11 @@ import (
 	"context"
 	"os"
 
-	"github.com/Sirpyerre/bravo-challenge/internal/application"
+	"github.com/Sirpyerre/bravo-challenge/internal/application/healthcheck"
+	"github.com/Sirpyerre/bravo-challenge/internal/application/auth"
 	"github.com/Sirpyerre/bravo-challenge/internal/config"
+	"github.com/Sirpyerre/bravo-challenge/internal/repository"
+	"github.com/Sirpyerre/bravo-challenge/internal/service"
 	"github.com/Sirpyerre/bravo-challenge/pkg/database"
 	"github.com/Sirpyerre/bravo-challenge/pkg/logger"
 	pkgrabbit "github.com/Sirpyerre/bravo-challenge/pkg/rabbitmq"
@@ -72,7 +75,15 @@ func newServer(cfg *config.Config) *server {
 	}
 	log.Info().Msg("connected to rabbitmq")
 
-	depChecker := &application.DependencyChecker{
+	// Repositories
+	userRepo := repository.NewUserRepository(db)
+
+	// Services
+	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
+
+	// Handlers
+	authHandler := auth.NewHandler(authService)
+	depChecker := &healthcheck.DependencyChecker{
 		DB:       db,
 		Redis:    rdb,
 		RabbitMQ: rmq,
@@ -82,7 +93,7 @@ func newServer(cfg *config.Config) *server {
 	e.HideBanner = true
 
 	registerMiddleware(e, cfg, log)
-	registerRoutes(e, depChecker)
+	registerRoutes(e, depChecker, authHandler, authService)
 
 	return &server{
 		echo:     e,
@@ -139,5 +150,17 @@ func (s *server) start() {
 	if err := s.echo.Start(addr); err != nil {
 		s.logger.Fatal().Err(err).Msg("server failed to start")
 		os.Exit(1)
+	}
+}
+
+func (s *server) close() {
+	if s.db != nil {
+		s.db.Close()
+	}
+	if s.redis != nil {
+		s.redis.Close()
+	}
+	if s.rabbitmq != nil {
+		s.rabbitmq.Close()
 	}
 }
