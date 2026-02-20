@@ -14,7 +14,8 @@ export default function LoginPage() {
     const form = new FormData(e.currentTarget);
     const email = ((form.get("email") ?? "") as string).trim();
     const password = ((form.get("password") ?? "") as string).trim();
-    const country = isRegister ? (((form.get("country") ?? "") as string).trim() || "MX") : "MX";
+    const country = isRegister ? ((form.get("country") as string) || "MX") : "MX";
+    const role = isRegister ? ((form.get("role") as string) || "USER") : "USER";
 
     if (!email || !password) {
       toast.error("Email y password son requeridos");
@@ -24,11 +25,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       if (isRegister) {
-        await register(email, password, country);
+        await register(email, password, country, role);
         toast.success("Registro exitoso");
       } else {
         await login(email, password);
-        toast.success("Login exitoso");
       }
       navigate("/app");
     } catch (err: any) {
@@ -57,10 +57,22 @@ export default function LoginPage() {
             <input className="input" name="password" type="password" required placeholder="••••••" />
           </div>
           {isRegister && (
-            <div className="space-y-1">
-              <label className="label">País</label>
-              <input className="input" name="country" placeholder="MX" defaultValue="MX" />
-            </div>
+            <>
+              <div className="space-y-1">
+                <label className="label">País</label>
+                <select className="input" name="country" defaultValue="MX">
+                  <option value="MX">🇲🇽 México (MX)</option>
+                  <option value="BR">🇧🇷 Brasil (BR)</option>
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="label">Rol</label>
+                <select className="input" name="role" defaultValue="USER">
+                  <option value="USER">Usuario</option>
+                  <option value="AGENT">Agente</option>
+                </select>
+              </div>
+            </>
           )}
 
           <button className="btn btn-primary w-full" type="submit" disabled={loading}>

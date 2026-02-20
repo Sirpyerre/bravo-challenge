@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Application, ApplicationStatus } from "../../types";
 import { updateStatus } from "../../api/applications";
@@ -7,6 +8,14 @@ const statuses: ApplicationStatus[] = ["PENDING", "VALIDATING", "APPROVED", "DEN
 
 export function RequestDetailDrawer({ app, onClose }: { app: Application | null; onClose: () => void }) {
   const qc = useQueryClient();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyId = () => {
+    if (!app) return;
+    navigator.clipboard.writeText(app.id);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
 
   const { mutateAsync, isPending } = useMutation({
     mutationFn: async (payload: { status: ApplicationStatus; notes?: string | null }) => {
@@ -43,6 +52,18 @@ export function RequestDetailDrawer({ app, onClose }: { app: Application | null;
         </div>
         <button className="btn btn-ghost" onClick={onClose}>Cerrar</button>
       </div>
+
+      <button
+        onClick={handleCopyId}
+        title="Copiar ID"
+        className="mx-4 mt-3 flex w-[calc(100%-2rem)] items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-left font-mono text-xs text-muted transition hover:border-primary hover:text-foreground"
+      >
+        <span className="truncate">{app.id}</span>
+        <span className="shrink-0 text-[10px] uppercase tracking-wide">
+          {copied ? "✓ Copiado" : "Copiar"}
+        </span>
+      </button>
+
       <div className="space-y-4 p-4">
         <div className="grid grid-cols-2 gap-3 text-sm text-muted">
           <div><span className="label">País</span><div>{app.country}</div></div>

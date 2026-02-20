@@ -1,4 +1,4 @@
-basePath: /api/v1
+basePath: /
 definitions:
   github_com_Sirpyerre_bravo-challenge_internal_domain.Application:
     properties:
@@ -118,7 +118,22 @@ definitions:
         example: APPROVED
         type: string
     type: object
-host: localhost:8080
+  internal_application_webhook.BankCallbackRequest:
+    properties:
+      application_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      approved:
+        example: true
+        type: boolean
+      reason:
+        example: Perfil crediticio aprobado
+        type: string
+      risk_level:
+        example: LOW
+        type: string
+    type: object
+host: localhost:8000
 info:
   contact:
     email: pedro.rojas@gmail.com
@@ -381,6 +396,55 @@ paths:
       summary: Registrar usuario
       tags:
       - auth
+  /webhooks/bank-callback:
+    post:
+      consumes:
+      - application/json
+      description: |-
+        Endpoint que recibe la decisión de crédito enviada por el banco de forma asíncrona.
+        Requiere la cabecera X-Webhook-Secret con el secreto compartido.
+      parameters:
+      - description: Secreto compartido
+        in: header
+        name: X-Webhook-Secret
+        required: true
+        type: string
+      - description: Decisión del banco
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_application_webhook.BankCallbackRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 'Webhook: callback del banco'
+      tags:
+      - webhooks
 securityDefinitions:
   BearerAuth:
     description: Type "Bearer" followed by a space and JWT token.

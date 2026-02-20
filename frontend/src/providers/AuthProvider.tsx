@@ -9,7 +9,7 @@ interface AuthContextType {
   userEmail: string | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, country: string) => Promise<void>;
+  register: (email: string, password: string, country: string, role: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -54,8 +54,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (email: string, password: string, country: string) => {
-    const res = await client.post("/auth/register", { email, password, country });
+  const register = async (email: string, password: string, country: string, role: string) => {
+    const res = await client.post("/auth/register", { email, password, country, role });
     const jwt = res.data?.token;
     if (jwt) {
       setToken(jwt);

@@ -54,7 +54,7 @@ Bravo Challenge es una plataforma de solicitudes de crédito diseñada para oper
 - Pipeline de procesamiento asíncrono orquestada por triggers de PostgreSQL
 - Notificaciones en tiempo real vía WebSocket
 - Idempotencia garantizada en POST/PUT mediante Redis + base de datos (TTL 24h)
-- Autenticación JWT con control de acceso basado en roles (USER, AGENT, ADMIN)
+- Autenticación JWT con control de acceso basado en roles (USER, AGENT, ADMIN — los ADMIN se crean manualmente)
 - Métricas Prometheus y dashboards Grafana
 - Documentación Swagger en `/swagger/*`
 
@@ -158,13 +158,42 @@ Para agregar un nuevo país: crear un adaptador bancario en `internal/bank/` y u
 
 ---
 
+## Roles y permisos
+
+El sistema tiene tres roles. El JWT incluye el rol en sus claims y cada endpoint lo verifica.
+
+| Rol | Alta | Descripción |
+|-----|------|-------------|
+| `USER` | Registro en frontend / API | Usuario final que solicita créditos |
+| `AGENT` | Registro en frontend / API | Agente de crédito con acceso ampliado |
+| `ADMIN` | **Alta manual** en BD | Administrador del sistema |
+
+> Los ADMIN se crean directamente en PostgreSQL:
+> ```sql
+> UPDATE users SET role = 'ADMIN' WHERE email = 'admin@bravo.test';
+> ```
+
+### Alcance de cada rol
+
+| Acción | USER | AGENT | ADMIN |
+|--------|:----:|:-----:|:-----:|
+| Registrarse / iniciar sesión | ✓ | ✓ | ✓ |
+| Crear solicitud de crédito | ✓ | ✓ | ✓ |
+| Ver **sus propias** solicitudes | ✓ | ✓ | ✓ |
+| Ver **todas** las solicitudes (cualquier usuario y país) | — | ✓ | ✓ |
+| Obtener solicitud ajena por ID | — | ✓ | ✓ |
+| Actualizar estado de solicitud (`PUT /applications/:id`) | — | ✓ | ✓ |
+| Recibir notificaciones WebSocket de sus solicitudes | ✓ | ✓ | ✓ |
+
+---
+
 ## Endpoints
 
 ### Autenticación
 
 | Método | Ruta | Descripción |
 |--------|------|-------------|
-| POST | `/auth/register` | Registrar usuario (roles: USER / AGENT / ADMIN) |
+| POST | `/auth/register` | Registrar usuario (roles disponibles: `USER`, `AGENT`) |
 | POST | `/auth/login` | Login, devuelve JWT |
 
 ### Solicitudes de crédito (requieren JWT)
@@ -328,14 +357,12 @@ Todas las variables se cargan mediante `github.com/sethvargo/go-envconfig`. Las 
 
 ### URLs de bancos (WireMock)
 
+Bancos simulados para validación de riesgo.
+
 | Variable | Por defecto |
 |----------|-------------|
 | `MX_BANK_URL` | `http://localhost:8080/mx` |
 | `BR_BANK_URL` | `http://localhost:8080/br` |
-| `CO_BANK_URL` | `http://localhost:8080/co` |
-| `ESP_BANK_URL` | `http://localhost:8080/esp` |
-| `PT_BANK_URL` | `http://localhost:8080/pt` |
-| `IT_BANK_URL` | `http://localhost:8080/it` |
 
 ### Países asíncronos
 

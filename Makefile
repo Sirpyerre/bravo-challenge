@@ -1,6 +1,6 @@
 .PHONY: help run build test swagger migrate clean \
         docker-up docker-down \
-        minikube-build minikube-deploy minikube-reload \
+        minikube-build minikube-build-frontend minikube-deploy minikube-reload minikube-reload-frontend \
         k8s-status k8s-down \
         monitoring-install monitoring-forward monitoring-down
 
@@ -22,10 +22,11 @@ help:
 	@echo "  make docker-down      Detener servicios"
 	@echo ""
 	@echo "$(YELLOW)Minikube$(NC)"
-	@echo "  make minikube-deploy      Build imagen + configmaps + apply manifiestos"
-	@echo "  make minikube-reload      Rebuild imagen y reiniciar pods API"
-	@echo "  make k8s-status           Ver estado de pods en namespace bravo"
-	@echo "  make k8s-down             Eliminar namespace bravo"
+	@echo "  make minikube-deploy           Build API + frontend + apply manifiestos"
+	@echo "  make minikube-reload           Rebuild API y reiniciar pods API"
+	@echo "  make minikube-reload-frontend  Rebuild frontend y reiniciar pods frontend"
+	@echo "  make k8s-status                Ver estado de pods en namespace bravo"
+	@echo "  make k8s-down                  Eliminar namespace bravo"
 	@echo ""
 	@echo "$(YELLOW)Monitoring$(NC)"
 	@echo "  make monitoring-install   Instalar Prometheus + Grafana via Helm"
@@ -70,7 +71,14 @@ minikube-build:
 	docker build -t bravo-api:latest -f $(BACKEND_DIR)/Dockerfile $(BACKEND_DIR)
 	@echo "$(GREEN)✓ bravo-api:latest cargada en minikube$(NC)"
 
-minikube-deploy: minikube-build
+minikube-build-frontend:
+	eval $$(minikube docker-env) && \
+	docker build -t bravo-frontend:latest \
+		--build-arg VITE_API_BASE_URL=http://bravo.local \
+		-f frontend/Dockerfile frontend/
+	@echo "$(GREEN)✓ bravo-frontend:latest cargada en minikube$(NC)"
+
+minikube-deploy: minikube-build minikube-build-frontend
 	kubectl create configmap wiremock-mappings \
 		--from-file=wiremock/mappings/ -n bravo \
 		--dry-run=client -o yaml | kubectl apply -f -
@@ -79,6 +87,9 @@ minikube-deploy: minikube-build
 
 minikube-reload: minikube-build
 	kubectl rollout restart deployment/bravo-api -n bravo
+
+minikube-reload-frontend: minikube-build-frontend
+	kubectl rollout restart deployment/bravo-frontend -n bravo
 
 k8s-status:
 	kubectl get pods -n bravo

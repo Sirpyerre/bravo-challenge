@@ -8,8 +8,8 @@ data:
   ENV: "production"
   LOG_LEVEL: "info"
   LOG_FORMAT: "json"
-  FRONTEND_URL: "http://localhost:3000"
-  CORS_ALLOWED_ORIGINS: "http://localhost:3000"
+  FRONTEND_URL: "http://bravo.local"
+  CORS_ALLOWED_ORIGINS: "http://bravo.local"
 
   # Database
   POSTGRES_SERVER: "postgres-service"

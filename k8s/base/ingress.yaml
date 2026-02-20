@@ -4,17 +4,70 @@ metadata:
   name: bravo-ingress
   namespace: bravo
   annotations:
-    nginx.ingress.kubernetes.io/rewrite-target: /
+    # WebSocket upgrade support
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
 spec:
   ingressClassName: nginx
   rules:
     - host: bravo.local
       http:
         paths:
-          - path: /
+          # ── API paths → bravo-api-service ──────────────────────────────────
+          - path: /api
             pathType: Prefix
             backend:
               service:
                 name: bravo-api-service
                 port:
                   number: 8000
+          - path: /auth
+            pathType: Prefix
+            backend:
+              service:
+                name: bravo-api-service
+                port:
+                  number: 8000
+          - path: /health
+            pathType: Prefix
+            backend:
+              service:
+                name: bravo-api-service
+                port:
+                  number: 8000
+          - path: /metrics
+            pathType: Prefix
+            backend:
+              service:
+                name: bravo-api-service
+                port:
+                  number: 8000
+          - path: /swagger
+            pathType: Prefix
+            backend:
+              service:
+                name: bravo-api-service
+                port:
+                  number: 8000
+          - path: /webhooks
+            pathType: Prefix
+            backend:
+              service:
+                name: bravo-api-service
+                port:
+                  number: 8000
+          - path: /ws
+            pathType: Prefix
+            backend:
+              service:
+                name: bravo-api-service
+                port:
+                  number: 8000
+          # ── Frontend (catch-all) → bravo-frontend-service ──────────────────
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: bravo-frontend-service
+                port:
+                  number: 80

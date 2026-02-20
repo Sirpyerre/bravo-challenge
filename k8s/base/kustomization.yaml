@@ -12,4 +12,5 @@ resources:
   - rabbitmq.yaml
   - wiremock.yaml
   - api.yaml
+  - frontend.yaml
   - ingress.yaml

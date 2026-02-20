@@ -7,8 +7,8 @@
 // @contact.email pedro.rojas@gmail.com
 // @contact.url http://www.linkedIn.com/in/sirpyerre
 
-// @host localhost:8080
-// @BasePath /api/v1
+// @host localhost:8000
+// @BasePath /
 
 // @securityDefinitions.apikey BearerAuth
 // @in header

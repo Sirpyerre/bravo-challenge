@@ -411,6 +411,77 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/webhooks/bank-callback": {
+            "post": {
+                "description": "Endpoint que recibe la decisión de crédito enviada por el banco de forma asíncrona.\nRequiere la cabecera X-Webhook-Secret con el secreto compartido.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "webhooks"
+                ],
+                "summary": "Webhook: callback del banco",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Secreto compartido",
+                        "name": "X-Webhook-Secret",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Decisión del banco",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_application_webhook.BankCallbackRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -581,6 +652,27 @@ const docTemplate = `{
                     "example": "APPROVED"
                 }
             }
+        },
+        "internal_application_webhook.BankCallbackRequest": {
+            "type": "object",
+            "properties": {
+                "application_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "approved": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "reason": {
+                    "type": "string",
+                    "example": "Perfil crediticio aprobado"
+                },
+                "risk_level": {
+                    "type": "string",
+                    "example": "LOW"
+                }
+            }
         }
     },
     "securityDefinitions": {
@@ -596,8 +688,8 @@ const docTemplate = `{
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
 	Version:          "1.0",
-	Host:             "localhost:8080",
-	BasePath:         "/api/v1",
+	Host:             "localhost:8000",
+	BasePath:         "/",
 	Schemes:          []string{},
 	Title:            "Bravo Credit Challenge API",
 	Description:      "API para gestión de solicitudes de crédito",
