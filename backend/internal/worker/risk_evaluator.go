@@ -3,6 +3,7 @@ package worker
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -24,6 +25,7 @@ type RiskEvaluator struct {
 	appRepo        repository.ApplicationRepository
 	processedRepo  repository.ProcessedEventRepository
 	bankURLs       config.BankURLsConfig
+	asyncCountries map[string]bool
 	logger         zerolog.Logger
 }
 
@@ -33,15 +35,21 @@ func NewRiskEvaluator(
 	appRepo repository.ApplicationRepository,
 	processedRepo repository.ProcessedEventRepository,
 	bankURLs config.BankURLsConfig,
+	asyncCountries []string,
 	logger zerolog.Logger,
 ) *RiskEvaluator {
+	async := make(map[string]bool, len(asyncCountries))
+	for _, c := range asyncCountries {
+		async[c] = true
+	}
 	return &RiskEvaluator{
-		consumer:      consumer,
-		publisher:     publisher,
-		appRepo:       appRepo,
-		processedRepo: processedRepo,
-		bankURLs:      bankURLs,
-		logger:        logger.With().Str("worker", riskEvaluatorName).Logger(),
+		consumer:       consumer,
+		publisher:      publisher,
+		appRepo:        appRepo,
+		processedRepo:  processedRepo,
+		bankURLs:       bankURLs,
+		asyncCountries: async,
+		logger:         logger.With().Str("worker", riskEvaluatorName).Logger(),
 	}
 }
 
@@ -73,6 +81,26 @@ func (w *RiskEvaluator) handle(ctx context.Context, body []byte) error {
 	if err != nil || app == nil {
 		metrics.EventsErrors.WithLabelValues(riskEvaluatorName, "find_application").Inc()
 		return fmt.Errorf("find application %s: %w", event.ApplicationID, err)
+	}
+
+	// Países async: no llamamos al banco directamente.
+	// Marcamos VALIDATING y esperamos que el banco llame al webhook.
+	if w.asyncCountries[app.Country] {
+		if err := w.appRepo.SetValidating(ctx, app.ID); err != nil {
+			if errors.Is(err, repository.ErrAlreadyTerminal) {
+				w.logger.Info().
+					Str("application_id", app.ID.String()).
+					Str("country", app.Country).
+					Msg("async country: webhook already processed this application, skipping")
+				return w.processedRepo.MarkProcessed(ctx, event.ID, event.Type, riskEvaluatorName)
+			}
+			return fmt.Errorf("set validating: %w", err)
+		}
+		w.logger.Info().
+			Str("application_id", app.ID.String()).
+			Str("country", app.Country).
+			Msg("async country: marked as VALIDATING, waiting for bank webhook callback")
+		return w.processedRepo.MarkProcessed(ctx, event.ID, event.Type, riskEvaluatorName)
 	}
 
 	w.logger.Info().
@@ -107,6 +135,13 @@ func (w *RiskEvaluator) handle(ctx context.Context, body []byte) error {
 
 	riskLevel := parseRiskLevel(bankResp.RiskLevel)
 	if err := w.appRepo.UpdateRiskAndStatus(ctx, app.ID, status, riskLevel, bankResp.Reason); err != nil {
+		if errors.Is(err, repository.ErrAlreadyTerminal) {
+			// El webhook ya actualizó esta aplicación; no es un error, simplemente omitimos.
+			w.logger.Info().
+				Str("application_id", app.ID.String()).
+				Msg("risk evaluation skipped: application already in terminal state (webhook processed first)")
+			return w.processedRepo.MarkProcessed(ctx, event.ID, event.Type, riskEvaluatorName)
+		}
 		metrics.EventsErrors.WithLabelValues(riskEvaluatorName, "update_status").Inc()
 		return fmt.Errorf("update application: %w", err)
 	}

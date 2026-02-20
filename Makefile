@@ -48,6 +48,8 @@ swagger:
 
 migrate:
 	psql -h localhost -U postgres -d bravo -f $(BACKEND_DIR)/migrations/001_init.sql
+	psql -h localhost -U postgres -d bravo -f $(BACKEND_DIR)/migrations/002_add_role_to_users.sql
+	psql -h localhost -U postgres -d bravo -f $(BACKEND_DIR)/migrations/003_pg_notify_trigger.sql
 
 clean:
 	rm -rf $(BACKEND_DIR)/bin
@@ -86,7 +88,11 @@ k8s-down:
 
 k8s-migrate: ## Correr migraciones en el PostgreSQL del cluster
 	kubectl cp $(BACKEND_DIR)/migrations/001_init.sql bravo/postgres-0:/tmp/001_init.sql
+	kubectl cp $(BACKEND_DIR)/migrations/002_add_role_to_users.sql bravo/postgres-0:/tmp/002_add_role_to_users.sql
+	kubectl cp $(BACKEND_DIR)/migrations/003_pg_notify_trigger.sql bravo/postgres-0:/tmp/003_pg_notify_trigger.sql
 	kubectl exec -n bravo postgres-0 -- psql -U postgres -d bravo -f /tmp/001_init.sql
+	kubectl exec -n bravo postgres-0 -- psql -U postgres -d bravo -f /tmp/002_add_role_to_users.sql
+	kubectl exec -n bravo postgres-0 -- psql -U postgres -d bravo -f /tmp/003_pg_notify_trigger.sql
 
 k8s-port-forward: ## Acceso local sin tunnel: API en localhost:8000
 	kubectl port-forward svc/bravo-api-service 8000:8000 -n bravo

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -10,13 +9,11 @@ import (
 	"github.com/Sirpyerre/bravo-challenge/internal/metrics"
 	"github.com/Sirpyerre/bravo-challenge/internal/repository"
 	"github.com/Sirpyerre/bravo-challenge/internal/validation"
-	"github.com/Sirpyerre/bravo-challenge/pkg/rabbitmq"
 	"github.com/google/uuid"
 )
 
 type ApplicationService struct {
-	appRepo   repository.ApplicationRepository
-	publisher *rabbitmq.Publisher
+	appRepo repository.ApplicationRepository
 }
 
 type CreateApplicationRequest struct {
@@ -46,8 +43,8 @@ type ListApplicationsResponse struct {
 	Total        int                  `json:"total"`
 }
 
-func NewApplicationService(appRepo repository.ApplicationRepository, publisher *rabbitmq.Publisher) *ApplicationService {
-	return &ApplicationService{appRepo: appRepo, publisher: publisher}
+func NewApplicationService(appRepo repository.ApplicationRepository) *ApplicationService {
+	return &ApplicationService{appRepo: appRepo}
 }
 
 func (s *ApplicationService) Create(ctx context.Context, userID uuid.UUID, req CreateApplicationRequest) (*domain.Application, error) {
@@ -85,25 +82,11 @@ func (s *ApplicationService) Create(ctx context.Context, userID uuid.UUID, req C
 
 	metrics.ApplicationsCreated.WithLabelValues(app.Country).Inc()
 
-	// Publicar evento para procesamiento asíncrono
-	s.publishEvent("application.created", domain.Event{
-		ID:            uuid.New().String(),
-		Type:          "application.created",
-		ApplicationID: app.ID,
-		UserID:        app.UserID,
-		Data:          app,
-		CreatedAt:     time.Now(),
-	})
+	// El trigger de PostgreSQL (trg_application_created) dispara pg_notify al hacer el INSERT.
+	// El PgListener recibe la notificación y publica en RabbitMQ.
+	// El servicio solo escribe en BD; el procesamiento asíncrono lo gestiona la BD.
 
 	return app, nil
-}
-
-func (s *ApplicationService) publishEvent(routingKey string, event domain.Event) {
-	data, err := json.Marshal(event)
-	if err != nil {
-		return
-	}
-	s.publisher.Publish(routingKey, data)
 }
 
 func (s *ApplicationService) GetByID(ctx context.Context, requesterID uuid.UUID, role domain.Role, id uuid.UUID) (*domain.Application, error) {

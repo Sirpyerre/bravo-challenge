@@ -59,13 +59,15 @@ func (m *handlerMockRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status
 	return nil
 }
 
+func (m *handlerMockRepo) SetValidating(ctx context.Context, id uuid.UUID) error { return nil }
+
 func (m *handlerMockRepo) UpdateRiskAndStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, riskLevel domain.RiskLevel, bankReason string) error {
 	return nil
 }
 
 func TestHandler_List_ParsesDateFilters(t *testing.T) {
 	repo := &handlerMockRepo{}
-	svc := service.NewApplicationService(repo, nil)
+	svc := service.NewApplicationService(repo)
 	h := NewHandler(svc)
 
 	e := echo.New()
@@ -95,7 +97,7 @@ func TestHandler_List_ParsesDateFilters(t *testing.T) {
 
 func TestHandler_List_InvalidDateFormat(t *testing.T) {
 	repo := &handlerMockRepo{}
-	svc := service.NewApplicationService(repo, nil)
+	svc := service.NewApplicationService(repo)
 	h := NewHandler(svc)
 
 	e := echo.New()

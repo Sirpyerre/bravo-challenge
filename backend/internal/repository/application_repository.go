@@ -12,12 +12,19 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// ErrAlreadyTerminal se devuelve cuando se intenta actualizar una aplicación
+// que ya tiene un estado terminal (APPROVED o DENIED).
+var ErrAlreadyTerminal = errors.New("application already in terminal state")
+
 type ApplicationRepository interface {
 	Create(ctx context.Context, app *domain.Application) error
 	FindByID(ctx context.Context, id uuid.UUID) (*domain.Application, error)
 	FindByUserID(ctx context.Context, userID uuid.UUID, country, status string, fromDate, toDate *time.Time, limit, offset int) ([]domain.Application, int, error)
 	FindAll(ctx context.Context, country, status string, fromDate, toDate *time.Time, limit, offset int) ([]domain.Application, int, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, notes *string) error
+	// SetValidating transiciona de PENDING → VALIDATING solo si aún está en PENDING.
+	// Devuelve ErrAlreadyTerminal si el webhook ya actualizó la app antes que el worker.
+	SetValidating(ctx context.Context, id uuid.UUID) error
 	UpdateRiskAndStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, riskLevel domain.RiskLevel, bankReason string) error
 }
 
@@ -254,18 +261,49 @@ func (r *applicationRepository) UpdateStatus(ctx context.Context, id uuid.UUID, 
 	return nil
 }
 
+func (r *applicationRepository) SetValidating(ctx context.Context, id uuid.UUID) error {
+	// Solo transiciona si la app está en PENDING. Si el webhook llegó primero
+	// (y ya la puso en APPROVED/DENIED), no sobreescribimos el estado terminal.
+	result, err := r.db.Exec(ctx,
+		`UPDATE applications SET status = 'VALIDATING', updated_at = NOW()
+		 WHERE id = $1 AND status = 'PENDING'`, id)
+	if err != nil {
+		return fmt.Errorf("set validating: %w", err)
+	}
+	if result.RowsAffected() == 0 {
+		var exists bool
+		_ = r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM applications WHERE id = $1)`, id).Scan(&exists)
+		if !exists {
+			return fmt.Errorf("application not found")
+		}
+		return ErrAlreadyTerminal
+	}
+	return nil
+}
+
 func (r *applicationRepository) UpdateRiskAndStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, riskLevel domain.RiskLevel, bankReason string) error {
+	// La condición `status NOT IN (...)` hace la guarda atómica:
+	// si otro proceso ya actualizó la aplicación a un estado terminal,
+	// este UPDATE no afecta ninguna fila y devuelve ErrAlreadyTerminal.
 	query := `
 		UPDATE applications
 		SET status = $1, risk_level = $2, notes = $3, updated_at = NOW()
-		WHERE id = $4`
+		WHERE id = $4
+		  AND status NOT IN ('APPROVED', 'DENIED')`
 
 	result, err := r.db.Exec(ctx, query, status, riskLevel, bankReason, id)
 	if err != nil {
 		return fmt.Errorf("update application risk and status: %w", err)
 	}
 	if result.RowsAffected() == 0 {
-		return fmt.Errorf("application not found")
+		// Puede ser que no exista o que ya esté en estado terminal.
+		// Consultamos para distinguir ambos casos.
+		var exists bool
+		_ = r.db.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM applications WHERE id = $1)`, id).Scan(&exists)
+		if !exists {
+			return fmt.Errorf("application not found")
+		}
+		return ErrAlreadyTerminal
 	}
 	return nil
 }

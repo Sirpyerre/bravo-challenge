@@ -4,6 +4,7 @@ import (
 	"github.com/Sirpyerre/bravo-challenge/internal/application/auth"
 	"github.com/Sirpyerre/bravo-challenge/internal/application/credit"
 	"github.com/Sirpyerre/bravo-challenge/internal/application/healthcheck"
+	"github.com/Sirpyerre/bravo-challenge/internal/application/webhook"
 	"github.com/Sirpyerre/bravo-challenge/internal/idempotency"
 	appmiddleware "github.com/Sirpyerre/bravo-challenge/internal/middleware"
 	"github.com/Sirpyerre/bravo-challenge/internal/service"
@@ -14,7 +15,7 @@ import (
 	_ "github.com/Sirpyerre/bravo-challenge/docs"
 )
 
-func registerRoutes(e *echo.Echo, depChecker *healthcheck.DependencyChecker, authHandler *auth.Handler, creditHandler *credit.Handler, wsHandler *appwebsocket.Handler, authService *service.AuthService, idempotencySvc *idempotency.Service) {
+func registerRoutes(e *echo.Echo, depChecker *healthcheck.DependencyChecker, authHandler *auth.Handler, creditHandler *credit.Handler, wsHandler *appwebsocket.Handler, webhookHandler *webhook.Handler, authService *service.AuthService, idempotencySvc *idempotency.Service) {
 	// Health probes
 	e.GET("/health", healthcheck.HealthHandler)
 	e.GET("/health_dependencies", depChecker.HealthDependenciesHandler)
@@ -29,6 +30,10 @@ func registerRoutes(e *echo.Echo, depChecker *healthcheck.DependencyChecker, aut
 
 	// WebSocket (token via query param)
 	e.GET("/ws", wsHandler.Connect)
+
+	// Webhooks entrantes (sin JWT, autenticados por X-Webhook-Secret)
+	webhooks := e.Group("/webhooks")
+	webhooks.POST("/bank-callback", webhookHandler.BankCallback)
 
 	// API v1 (protegido con JWT)
 	api := e.Group("/api/v1", appmiddleware.JWTAuth(authService))

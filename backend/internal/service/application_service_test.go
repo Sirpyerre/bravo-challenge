@@ -67,6 +67,8 @@ func (m *mockAppRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status dom
 	return nil
 }
 
+func (m *mockAppRepo) SetValidating(ctx context.Context, id uuid.UUID) error { return nil }
+
 func (m *mockAppRepo) UpdateRiskAndStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, risk domain.RiskLevel, bankReason string) error {
 	return nil
 }
@@ -75,7 +77,7 @@ func (m *mockAppRepo) UpdateRiskAndStatus(ctx context.Context, id uuid.UUID, sta
 // Safe for tests that only exercise paths that don't reach publishEvent.
 func newTestAppService() (*service.ApplicationService, *mockAppRepo) {
 	repo := &mockAppRepo{}
-	svc := service.NewApplicationService(repo, nil)
+	svc := service.NewApplicationService(repo)
 	return svc, repo
 }
 
@@ -216,7 +218,7 @@ func TestApplicationService_UpdateStatus_ValidStatuses(t *testing.T) {
 
 func TestApplicationService_List_AppliesFilters(t *testing.T) {
 	repo := &mockAppRepo{listResp: []domain.Application{}, listTotal: 0}
-	svc := service.NewApplicationService(repo, nil)
+	svc := service.NewApplicationService(repo)
 	userID := uuid.New()
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
@@ -249,7 +251,7 @@ func TestApplicationService_List_AppliesFilters(t *testing.T) {
 
 func TestApplicationService_List_InvalidRange(t *testing.T) {
 	repo := &mockAppRepo{}
-	svc := service.NewApplicationService(repo, nil)
+	svc := service.NewApplicationService(repo)
 	userID := uuid.New()
 	from := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)

@@ -1,0 +1,20 @@
+{
+  "request": {
+    "method": "POST",
+    "urlPattern": "/simulate/bank-callback"
+  },
+  "response": {
+    "status": 200,
+    "headers": { "Content-Type": "application/json" },
+    "jsonBody": {
+      "message": "Callback enviado a bravo-api",
+      "payload_sent": {
+        "application_id": "{{request.body.application_id}}",
+        "approved": true,
+        "risk_level": "LOW",
+        "reason": "Perfil crediticio aprobado por el banco"
+      }
+    },
+    "transformers": ["response-template"]
+  }
+}

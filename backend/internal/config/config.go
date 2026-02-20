@@ -18,6 +18,13 @@ type Config struct {
 	// JWT
 	JWTSecret string `env:"JWT_SECRET,required"`
 
+	// Webhook
+	WebhookSecret string `env:"WEBHOOK_SECRET,default=dev-webhook-secret"`
+
+	// Países que usan evaluación bancaria asíncrona (webhook callback).
+	// El risk_evaluator los marca como VALIDATING y espera el callback.
+	AsyncBankCountries []string `env:"ASYNC_BANK_COUNTRIES"`
+
 	// RabbitMQ
 	RabbitMQ RabbitMQConfig
 

@@ -6,6 +6,7 @@ import (
 	"github.com/Sirpyerre/bravo-challenge/internal/application/auth"
 	"github.com/Sirpyerre/bravo-challenge/internal/application/credit"
 	"github.com/Sirpyerre/bravo-challenge/internal/application/healthcheck"
+	"github.com/Sirpyerre/bravo-challenge/internal/application/webhook"
 	"github.com/Sirpyerre/bravo-challenge/internal/config"
 	"github.com/Sirpyerre/bravo-challenge/internal/idempotency"
 	_ "github.com/Sirpyerre/bravo-challenge/internal/metrics" // registra métricas custom
@@ -36,6 +37,7 @@ type server struct {
 	riskWorker   *worker.RiskEvaluator
 	auditWorker  *worker.Auditor
 	notifyWorker *worker.Notifier
+	pgListener   *worker.PgListener
 	wsHub        *appwebsocket.Hub
 }
 
@@ -97,21 +99,25 @@ func newServer(cfg *config.Config) *server {
 
 	// Services
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
-	appService := service.NewApplicationService(appRepo, publisher)
+	appService := service.NewApplicationService(appRepo)
 	idempotencySvc := idempotency.NewService(rdb, idempotencyRepo, cfg.IdempotencyTTL)
 
 	// WebSocket hub
 	wsHub := appwebsocket.NewHub()
 
 	// Workers
-	riskWorker := worker.NewRiskEvaluator(consumer, publisher, appRepo, processedRepo, cfg.BankURLs, log)
+	riskWorker := worker.NewRiskEvaluator(consumer, publisher, appRepo, processedRepo, cfg.BankURLs, cfg.AsyncBankCountries, log)
 	auditWorker := worker.NewAuditor(pkgrabbit.NewConsumer(rmq), auditRepo, processedRepo, log)
 	notifyWorker := worker.NewNotifier(pkgrabbit.NewConsumer(rmq), processedRepo, wsHub, log)
+	// PgListener: escucha pg_notify de PostgreSQL y publica en RabbitMQ.
+	// Es el puente entre el trigger nativo de PG y el pipeline async.
+	pgListener := worker.NewPgListener(db, publisher, log)
 
 	// Handlers
 	authHandler := auth.NewHandler(authService)
 	creditHandler := credit.NewHandler(appService)
 	wsHandler := appwebsocket.NewHandler(wsHub, authService)
+	webhookHandler := webhook.NewHandler(appRepo, publisher, cfg.WebhookSecret)
 	depChecker := &healthcheck.DependencyChecker{
 		DB:       db,
 		Redis:    rdb,
@@ -131,7 +137,7 @@ func newServer(cfg *config.Config) *server {
 	e.GET("/metrics", echoprometheus.NewHandler())
 
 	registerMiddleware(e, cfg, log)
-	registerRoutes(e, depChecker, authHandler, creditHandler, wsHandler, authService, idempotencySvc)
+	registerRoutes(e, depChecker, authHandler, creditHandler, wsHandler, webhookHandler, authService, idempotencySvc)
 
 	return &server{
 		echo:         e,
@@ -143,6 +149,7 @@ func newServer(cfg *config.Config) *server {
 		riskWorker:   riskWorker,
 		auditWorker:  auditWorker,
 		notifyWorker: notifyWorker,
+		pgListener:   pgListener,
 		wsHub:        wsHub,
 	}
 }
@@ -207,6 +214,12 @@ func (s *server) startWorkers(ctx context.Context) {
 	if err := s.notifyWorker.Start(ctx); err != nil {
 		s.logger.Fatal().Err(err).Msg("failed to start notifier worker")
 	}
+	// PgListener corre en su propia goroutine: bloquea esperando notificaciones de PostgreSQL.
+	go func() {
+		if err := s.pgListener.Start(ctx); err != nil {
+			s.logger.Error().Err(err).Msg("pg_listener stopped with error")
+		}
+	}()
 	s.logger.Info().Msg("workers started")
 }
 
