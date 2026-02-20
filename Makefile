@@ -79,6 +79,7 @@ minikube-build-frontend:
 	@echo "$(GREEN)✓ bravo-frontend:latest cargada en minikube$(NC)"
 
 minikube-deploy: minikube-build minikube-build-frontend
+	kubectl apply -f k8s/base/namespace.yaml
 	kubectl create configmap wiremock-mappings \
 		--from-file=wiremock/mappings/ -n bravo \
 		--dry-run=client -o yaml | kubectl apply -f -

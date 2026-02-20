@@ -149,10 +149,6 @@ El mecanismo central del sistema es la pipeline asíncrona disparada por un trig
 |------|--------|-----------|---------------------|------|
 | México | MX | CURP (regex + códigos de estado + fecha) | WireMock `/mx/evaluate` | **Síncrono — activo** |
 | Brasil | BR | CPF (checksum módulo 11) | `POST /webhooks/bank-callback` | **Asíncrono (webhook) — activo** |
-| Colombia | CO | Formato CC | WireMock `/co/evaluate` | Síncrono (preparado) |
-| España | ESP | Formato básico | WireMock `/esp/evaluate` | Síncrono (preparado) |
-| Portugal | PT | Formato básico | WireMock `/pt/evaluate` | Síncrono (preparado) |
-| Italia | IT | Formato básico | WireMock `/it/evaluate` | Síncrono (preparado) |
 
 Para agregar un nuevo país: crear un adaptador bancario en `internal/bank/` y un validador en `internal/validation/`, luego registrarlos en los respectivos factories.
 
@@ -252,7 +248,10 @@ make run
 ```
 
 El backend queda disponible en `http://localhost:8080`.
+
 La documentación Swagger está en `http://localhost:8080/swagger/index.html`.
+
+<img src="./docs/swagger-ui-bravo.png" alt="Swagger UI" width="600"/>
 
 ### Docker Compose
 
@@ -277,6 +276,8 @@ docker-compose down -v
 ```
 
 ### Kubernetes (Minikube)
+
+<img src="./docs/k9s-cluster-bravo.png" alt="Bravo en Kubernetes" width="800"/>
 
 ```bash
 # Construir imagen y aplicar manifests
