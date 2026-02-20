@@ -19,6 +19,19 @@ func NewHandler(appService *service.ApplicationService) *Handler {
 	return &Handler{appService: appService}
 }
 
+// Create crea una nueva solicitud de crédito.
+//
+//	@Summary		Crear solicitud de crédito
+//	@Tags			applications
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			Idempotency-Key	header		string								true	"Clave de idempotencia (UUID)"
+//	@Param			body			body		service.CreateApplicationRequest	true	"Datos de la solicitud"
+//	@Success		201				{object}	domain.Application
+//	@Failure		400				{object}	map[string]string
+//	@Failure		401				{object}	map[string]string
+//	@Router			/api/v1/applications [post]
 func (h *Handler) Create(c echo.Context) error {
 	userID, ok := c.Get("user_id").(uuid.UUID)
 	if !ok {
@@ -37,6 +50,22 @@ func (h *Handler) Create(c echo.Context) error {
 	return c.JSON(http.StatusCreated, app)
 }
 
+// List lista solicitudes de crédito. AGENT y ADMIN ven todas; USER solo las propias.
+//
+//	@Summary		Listar solicitudes
+//	@Tags			applications
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			country		query		string	false	"Filtro por país (MX, BR, ES…)"
+//	@Param			status		query		string	false	"Filtro por estado (PENDING, APPROVED, DENIED…)"
+//	@Param			from_date	query		string	false	"Fecha inicio YYYY-MM-DD"
+//	@Param			to_date		query		string	false	"Fecha fin YYYY-MM-DD"
+//	@Param			limit		query		int		false	"Límite (default 20, max 100)"
+//	@Param			offset		query		int		false	"Offset"
+//	@Success		200			{object}	service.ListApplicationsResponse
+//	@Failure		400			{object}	map[string]string
+//	@Failure		401			{object}	map[string]string
+//	@Router			/api/v1/applications [get]
 func (h *Handler) List(c echo.Context) error {
 	userID, ok := c.Get("user_id").(uuid.UUID)
 	if !ok {
@@ -82,6 +111,19 @@ func (h *Handler) List(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
+// GetByID obtiene una solicitud por ID. AGENT y ADMIN pueden ver cualquiera; USER solo la propia.
+//
+//	@Summary		Obtener solicitud por ID
+//	@Tags			applications
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			id	path		string	true	"UUID de la solicitud"
+//	@Success		200	{object}	domain.Application
+//	@Failure		400	{object}	map[string]string
+//	@Failure		401	{object}	map[string]string
+//	@Failure		403	{object}	map[string]string
+//	@Failure		404	{object}	map[string]string
+//	@Router			/api/v1/applications/{id} [get]
 func (h *Handler) GetByID(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
@@ -107,6 +149,21 @@ func (h *Handler) GetByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, app)
 }
 
+// UpdateStatus actualiza el estado de una solicitud. Requiere rol AGENT o ADMIN.
+//
+//	@Summary		Actualizar estado de solicitud
+//	@Tags			applications
+//	@Accept			json
+//	@Produce		json
+//	@Security		BearerAuth
+//	@Param			Idempotency-Key	header		string								true	"Clave de idempotencia (UUID)"
+//	@Param			id				path		string								true	"UUID de la solicitud"
+//	@Param			body			body		service.UpdateApplicationRequest	true	"Nuevo estado"
+//	@Success		200				{object}	map[string]string
+//	@Failure		400				{object}	map[string]string
+//	@Failure		401				{object}	map[string]string
+//	@Failure		403				{object}	map[string]string
+//	@Router			/api/v1/applications/{id} [put]
 func (h *Handler) UpdateStatus(c echo.Context) error {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {

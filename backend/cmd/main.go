@@ -1,3 +1,21 @@
+// @title Bravo Credit Challenge API
+// @version 1.0
+// @description API para gestión de solicitudes de crédito
+// @termsOfService http://swagger.io/terms/
+
+// @contact.name API Support
+// @contact.email pedro.rojas@gmail.com
+// @contact.url http://www.linkedIn.com/in/sirpyerre
+
+// @host localhost:8080
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Type "Bearer" followed by a space and JWT token.
+
+
 package main
 
 import (

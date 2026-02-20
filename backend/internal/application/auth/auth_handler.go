@@ -15,6 +15,17 @@ func NewHandler(authService *service.AuthService) *Handler {
 	return &Handler{authService: authService}
 }
 
+// Register registra un nuevo usuario.
+//
+//	@Summary		Registrar usuario
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		service.RegisterRequest		true	"Datos de registro"
+//	@Success		201		{object}	service.AuthResponse
+//	@Failure		400		{object}	map[string]string
+//	@Failure		409		{object}	map[string]string
+//	@Router			/auth/register [post]
 func (h *Handler) Register(c echo.Context) error {
 	var req service.RegisterRequest
 	if err := c.Bind(&req); err != nil {
@@ -36,6 +47,17 @@ func (h *Handler) Register(c echo.Context) error {
 	return c.JSON(http.StatusCreated, resp)
 }
 
+// Login autentica un usuario y retorna un JWT.
+//
+//	@Summary		Login
+//	@Tags			auth
+//	@Accept			json
+//	@Produce		json
+//	@Param			body	body		service.LoginRequest	true	"Credenciales"
+//	@Success		200		{object}	service.AuthResponse
+//	@Failure		400		{object}	map[string]string
+//	@Failure		401		{object}	map[string]string
+//	@Router			/auth/login [post]
 func (h *Handler) Login(c echo.Context) error {
 	var req service.LoginRequest
 	if err := c.Bind(&req); err != nil {

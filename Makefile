@@ -63,6 +63,19 @@ build:
 test:
 	cd $(BACKEND_DIR) && go test -v -race -cover ./...
 
+swagger:
+	cd $(BACKEND_DIR) && swag init --dir ./cmd --generalInfo docs.go --output ./docs --parseDependency --parseInternal
+
+# Kubernetes
+k8s-up:
+	kubectl apply -k k8s/base/
+
+k8s-down:
+	kubectl delete namespace bravo --ignore-not-found
+
+k8s-status:
+	kubectl get all -n bravo
+
 migrate:
 	cd $(BACKEND_DIR) && psql -h localhost -U postgres -d bravo -f migrations/001_init.sql
 	@echo "$(GREEN)✓ Migrations completed$(NC)"

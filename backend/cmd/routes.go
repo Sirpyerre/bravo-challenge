@@ -8,13 +8,19 @@ import (
 	appmiddleware "github.com/Sirpyerre/bravo-challenge/internal/middleware"
 	"github.com/Sirpyerre/bravo-challenge/internal/service"
 	appwebsocket "github.com/Sirpyerre/bravo-challenge/internal/websocket"
+	echoSwagger "github.com/swaggo/echo-swagger"
 	"github.com/labstack/echo/v4"
+
+	_ "github.com/Sirpyerre/bravo-challenge/docs"
 )
 
 func registerRoutes(e *echo.Echo, depChecker *healthcheck.DependencyChecker, authHandler *auth.Handler, creditHandler *credit.Handler, wsHandler *appwebsocket.Handler, authService *service.AuthService, idempotencySvc *idempotency.Service) {
 	// Health probes
 	e.GET("/health", healthcheck.HealthHandler)
 	e.GET("/health_dependencies", depChecker.HealthDependenciesHandler)
+
+	// Swagger UI
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
 
 	// Auth (público)
 	authGroup := e.Group("/auth")

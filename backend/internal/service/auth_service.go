@@ -26,19 +26,20 @@ type TokenClaims struct {
 }
 
 type AuthResponse struct {
-	UserID uuid.UUID `json:"user_id"`
-	Token  string    `json:"token"`
+	UserID uuid.UUID `json:"user_id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Token  string    `json:"token"   example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 }
 
 type RegisterRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Country  string `json:"country"`
+	Email    string `json:"email"    example:"user@example.com"`
+	Password string `json:"password" example:"secret123"`
+	Country  string `json:"country"  example:"MX"`
+	Role    string `json:"role"     example:"USER"`
 }
 
 type LoginRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Email    string `json:"email"    example:"user@example.com"`
+	Password string `json:"password" example:"secret123"`
 }
 
 func NewAuthService(userRepo repository.UserRepository, jwtSecret string) *AuthService {
@@ -66,7 +67,7 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 		Email:        req.Email,
 		PasswordHash: string(hash),
 		Country:      req.Country,
-		Role:         domain.RoleUser,
+		Role:         domain.Role(req.Role),
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {

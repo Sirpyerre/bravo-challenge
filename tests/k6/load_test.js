@@ -49,10 +49,13 @@ const TEST_CASES = [
 function registerAndLogin() {
   const email = `load_${randomString(12)}@bravo.test`;
   const password = "Test1234!";
+  // create random role user: USER, AGENT, ADMIN
+  const roles = ["USER", "AGENT", "ADMIN"];
+  const role = roles[Math.floor(Math.random() * roles.length)];
 
   const res = http.post(
     `${BASE_URL}/auth/register`,
-    JSON.stringify({ email, password, country: "MX" }),
+    JSON.stringify({ email, password, country: "MX", role }),
     { headers: { "Content-Type": "application/json" } }
   );
 

@@ -20,16 +20,16 @@ type ApplicationService struct {
 }
 
 type CreateApplicationRequest struct {
-	Country          string  `json:"country"`
-	FullName         string  `json:"full_name"`
-	IdentityDocument string  `json:"identity_document"`
-	MonthlyIncome    float64 `json:"monthly_income"`
-	RequestedAmount  float64 `json:"requested_amount"`
+	Country          string  `json:"country"           example:"MX"`
+	FullName         string  `json:"full_name"         example:"Juan Pérez"`
+	IdentityDocument string  `json:"identity_document" example:"CURP123456"`
+	MonthlyIncome    float64 `json:"monthly_income"    example:"15000"`
+	RequestedAmount  float64 `json:"requested_amount"  example:"50000"`
 }
 
 type UpdateApplicationRequest struct {
-	Status string  `json:"status"`
-	Notes  *string `json:"notes"`
+	Status string  `json:"status" example:"APPROVED"`
+	Notes  *string `json:"notes"  example:"Aprobado por evaluación de riesgo"`
 }
 
 type ListApplicationsRequest struct {
