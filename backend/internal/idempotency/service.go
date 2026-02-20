@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Sirpyerre/bravo-challenge/internal/metrics"
 	"github.com/Sirpyerre/bravo-challenge/internal/repository"
 	"github.com/redis/go-redis/v9"
 )
@@ -39,6 +40,7 @@ func (s *Service) Check(ctx context.Context, key string) (int, []byte, bool, err
 	if err == nil {
 		var cached cachedResponse
 		if err := json.Unmarshal(val, &cached); err == nil {
+			metrics.IdempotencyHits.WithLabelValues("hit").Inc()
 			return cached.StatusCode, cached.Body, true, nil
 		}
 	}
@@ -51,9 +53,11 @@ func (s *Service) Check(ctx context.Context, key string) (int, []byte, bool, err
 	if entry != nil {
 		// Re-cachear en Redis para futuras consultas
 		s.cacheInRedis(ctx, key, entry.ResponseStatusCode, entry.ResponseBody)
+		metrics.IdempotencyHits.WithLabelValues("hit").Inc()
 		return entry.ResponseStatusCode, entry.ResponseBody, true, nil
 	}
 
+	metrics.IdempotencyHits.WithLabelValues("miss").Inc()
 	return 0, nil, false, nil
 }
 

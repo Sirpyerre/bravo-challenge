@@ -30,7 +30,7 @@ func (h *Handler) Register(c echo.Context) error {
 		if err.Error() == "email already registered" {
 			return c.JSON(http.StatusConflict, map[string]string{"message": "email ya registrado"})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "error interno"})
+		return echo.NewHTTPError(http.StatusInternalServerError, "error interno").SetInternal(err)
 	}
 
 	return c.JSON(http.StatusCreated, resp)
@@ -51,7 +51,7 @@ func (h *Handler) Login(c echo.Context) error {
 		if err.Error() == "invalid credentials" {
 			return c.JSON(http.StatusUnauthorized, map[string]string{"message": "credenciales inválidas"})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"message": "error interno"})
+		return echo.NewHTTPError(http.StatusInternalServerError, "error interno").SetInternal(err)
 	}
 
 	return c.JSON(http.StatusOK, resp)

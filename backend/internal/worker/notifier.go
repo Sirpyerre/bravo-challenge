@@ -4,8 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/Sirpyerre/bravo-challenge/internal/domain"
+	"github.com/Sirpyerre/bravo-challenge/internal/metrics"
 	"github.com/Sirpyerre/bravo-challenge/internal/repository"
 	ws "github.com/Sirpyerre/bravo-challenge/internal/websocket"
 	"github.com/Sirpyerre/bravo-challenge/pkg/rabbitmq"
@@ -43,8 +45,10 @@ func (w *Notifier) Start(ctx context.Context) error {
 }
 
 func (w *Notifier) handle(ctx context.Context, body []byte) error {
+	start := time.Now()
 	var event domain.Event
 	if err := json.Unmarshal(body, &event); err != nil {
+		metrics.EventsErrors.WithLabelValues(notifierName, "unmarshal").Inc()
 		return fmt.Errorf("unmarshal event: %w", err)
 	}
 
@@ -68,5 +72,12 @@ func (w *Notifier) handle(ctx context.Context, body []byte) error {
 		w.hub.BroadcastToUser(event.UserID.String(), payload)
 	}
 
-	return w.processedRepo.MarkProcessed(ctx, event.ID, event.Type, notifierName)
+	if err := w.processedRepo.MarkProcessed(ctx, event.ID, event.Type, notifierName); err != nil {
+		return err
+	}
+
+	dur := time.Since(start).Seconds()
+	metrics.EventsProcessed.WithLabelValues(notifierName, "ok").Inc()
+	metrics.EventProcessingDuration.WithLabelValues(notifierName, "ok").Observe(dur)
+	return nil
 }

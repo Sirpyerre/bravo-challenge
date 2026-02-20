@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Sirpyerre/bravo-challenge/internal/domain"
 	"github.com/Sirpyerre/bravo-challenge/internal/service"
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
@@ -41,6 +42,7 @@ func (h *Handler) List(c echo.Context) error {
 	if !ok {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"message": "usuario no autenticado"})
 	}
+	role, _ := c.Get("role").(domain.Role)
 
 	limit, _ := strconv.Atoi(c.QueryParam("limit"))
 	offset, _ := strconv.Atoi(c.QueryParam("offset"))
@@ -72,7 +74,7 @@ func (h *Handler) List(c echo.Context) error {
 		Offset:   offset,
 	}
 
-	resp, err := h.appService.List(c.Request().Context(), userID, req)
+	resp, err := h.appService.List(c.Request().Context(), userID, role, req)
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": err.Error()})
 	}
@@ -85,13 +87,21 @@ func (h *Handler) GetByID(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": "id inválido"})
 	}
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{"message": "usuario no autenticado"})
+	}
+	role, _ := c.Get("role").(domain.Role)
 
-	app, err := h.appService.GetByID(c.Request().Context(), id)
+	app, err := h.appService.GetByID(c.Request().Context(), userID, role, id)
 	if err != nil {
 		if err.Error() == "solicitud no encontrada" {
 			return c.JSON(http.StatusNotFound, map[string]string{"message": err.Error()})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"message": err.Error()})
+		if err.Error() == "acceso no permitido" {
+			return c.JSON(http.StatusForbidden, map[string]string{"message": err.Error()})
+		}
+		return echo.NewHTTPError(http.StatusInternalServerError, "error interno").SetInternal(err)
 	}
 
 	return c.JSON(http.StatusOK, app)
@@ -102,13 +112,17 @@ func (h *Handler) UpdateStatus(c echo.Context) error {
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": "id inválido"})
 	}
+	role, _ := c.Get("role").(domain.Role)
+	if !role.IsPrivileged() {
+		return c.JSON(http.StatusForbidden, map[string]string{"message": "acceso no permitido"})
+	}
 
 	var req service.UpdateApplicationRequest
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": "request inválido"})
 	}
 
-	if err := h.appService.UpdateStatus(c.Request().Context(), id, req); err != nil {
+	if err := h.appService.UpdateStatus(c.Request().Context(), role, id, req); err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"message": err.Error()})
 	}
 

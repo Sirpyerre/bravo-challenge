@@ -23,6 +23,7 @@ type mockAppRepo struct {
 	lastTo      *time.Time
 	lastLimit   int
 	lastOffset  int
+	listAll     bool
 }
 
 func (m *mockAppRepo) Create(ctx context.Context, app *domain.Application) error {
@@ -47,6 +48,18 @@ func (m *mockAppRepo) FindByUserID(ctx context.Context, userID uuid.UUID, countr
 	m.lastTo = toDate
 	m.lastLimit = limit
 	m.lastOffset = offset
+	m.listAll = false
+	return m.listResp, m.listTotal, m.listErr
+}
+
+func (m *mockAppRepo) FindAll(ctx context.Context, country, status string, fromDate, toDate *time.Time, limit, offset int) ([]domain.Application, int, error) {
+	m.lastCountry = country
+	m.lastStatus = status
+	m.lastFrom = fromDate
+	m.lastTo = toDate
+	m.lastLimit = limit
+	m.lastOffset = offset
+	m.listAll = true
 	return m.listResp, m.listTotal, m.listErr
 }
 
@@ -181,7 +194,7 @@ func TestApplicationService_Create_MXAmountExceedsIncome(t *testing.T) {
 
 func TestApplicationService_UpdateStatus_InvalidStatus(t *testing.T) {
 	svc, _ := newTestAppService()
-	err := svc.UpdateStatus(context.Background(), uuid.New(), service.UpdateApplicationRequest{
+	err := svc.UpdateStatus(context.Background(), domain.RoleAdmin, uuid.New(), service.UpdateApplicationRequest{
 		Status: "INVALID_STATUS",
 	})
 	if err == nil {
@@ -194,7 +207,7 @@ func TestApplicationService_UpdateStatus_ValidStatuses(t *testing.T) {
 	id := uuid.New()
 
 	for _, status := range []string{"PENDING", "VALIDATING", "APPROVED", "DENIED"} {
-		err := svc.UpdateStatus(context.Background(), id, service.UpdateApplicationRequest{Status: status})
+		err := svc.UpdateStatus(context.Background(), domain.RoleAdmin, id, service.UpdateApplicationRequest{Status: status})
 		if err != nil {
 			t.Errorf("UpdateStatus(%q) unexpected error: %v", status, err)
 		}
@@ -208,7 +221,7 @@ func TestApplicationService_List_AppliesFilters(t *testing.T) {
 	from := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
 
-	_, err := svc.List(context.Background(), userID, service.ListApplicationsRequest{
+	_, err := svc.List(context.Background(), userID, domain.RoleUser, service.ListApplicationsRequest{
 		Country:  "MX",
 		Status:   "PENDING",
 		FromDate: &from,
@@ -241,7 +254,7 @@ func TestApplicationService_List_InvalidRange(t *testing.T) {
 	from := time.Date(2024, 2, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	_, err := svc.List(context.Background(), userID, service.ListApplicationsRequest{
+	_, err := svc.List(context.Background(), userID, domain.RoleUser, service.ListApplicationsRequest{
 		FromDate: &from,
 		ToDate:   &to,
 	})

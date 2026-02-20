@@ -1,4 +1,4 @@
-# Bravo Challenge - Solicitudes de Crédito Multi-País
+# Bravo Challenge - 
 
 Sistema de solicitudes de crédito distribuido para Bravo. Actualmente, el procesamiento de pagos está habilitado para México y Brasil, con una arquitectura extensible para habilitar fácilmente otros países (como España, Portugal, Italia y Colombia).
 

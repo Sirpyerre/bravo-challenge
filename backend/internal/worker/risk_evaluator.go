@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/Sirpyerre/bravo-challenge/internal/bank"
 	"github.com/Sirpyerre/bravo-challenge/internal/config"
 	"github.com/Sirpyerre/bravo-challenge/internal/domain"
+	"github.com/Sirpyerre/bravo-challenge/internal/metrics"
 	"github.com/Sirpyerre/bravo-challenge/internal/repository"
 	"github.com/Sirpyerre/bravo-challenge/pkg/rabbitmq"
 	"github.com/google/uuid"
@@ -50,8 +52,10 @@ func (w *RiskEvaluator) Start(ctx context.Context) error {
 }
 
 func (w *RiskEvaluator) handle(ctx context.Context, body []byte) error {
+	start := time.Now()
 	var event domain.Event
 	if err := json.Unmarshal(body, &event); err != nil {
+		metrics.EventsErrors.WithLabelValues(riskEvaluatorName, "unmarshal").Inc()
 		return fmt.Errorf("unmarshal event: %w", err)
 	}
 
@@ -67,6 +71,7 @@ func (w *RiskEvaluator) handle(ctx context.Context, body []byte) error {
 
 	app, err := w.appRepo.FindByID(ctx, event.ApplicationID)
 	if err != nil || app == nil {
+		metrics.EventsErrors.WithLabelValues(riskEvaluatorName, "find_application").Inc()
 		return fmt.Errorf("find application %s: %w", event.ApplicationID, err)
 	}
 
@@ -77,6 +82,7 @@ func (w *RiskEvaluator) handle(ctx context.Context, body []byte) error {
 
 	provider, err := bank.NewProvider(app.Country, w.bankURLs)
 	if err != nil {
+		metrics.EventsErrors.WithLabelValues(riskEvaluatorName, "bank_provider").Inc()
 		return fmt.Errorf("get bank provider: %w", err)
 	}
 
@@ -88,6 +94,7 @@ func (w *RiskEvaluator) handle(ctx context.Context, body []byte) error {
 	})
 	if err != nil {
 		w.logger.Error().Err(err).Msg("bank evaluation failed")
+		metrics.EventsErrors.WithLabelValues(riskEvaluatorName, "bank_evaluation").Inc()
 		// Marcar como DENIED si el banco no responde
 		w.appRepo.UpdateRiskAndStatus(ctx, app.ID, domain.StatusDenied, domain.RiskHigh, "Error al contactar banco")
 		return err
@@ -100,6 +107,7 @@ func (w *RiskEvaluator) handle(ctx context.Context, body []byte) error {
 
 	riskLevel := parseRiskLevel(bankResp.RiskLevel)
 	if err := w.appRepo.UpdateRiskAndStatus(ctx, app.ID, status, riskLevel, bankResp.Reason); err != nil {
+		metrics.EventsErrors.WithLabelValues(riskEvaluatorName, "update_status").Inc()
 		return fmt.Errorf("update application: %w", err)
 	}
 
@@ -124,7 +132,14 @@ func (w *RiskEvaluator) handle(ctx context.Context, body []byte) error {
 	data, _ := json.Marshal(updatedEvent)
 	w.publisher.Publish("application.updated", data)
 
-	return w.processedRepo.MarkProcessed(ctx, event.ID, event.Type, riskEvaluatorName)
+	if err := w.processedRepo.MarkProcessed(ctx, event.ID, event.Type, riskEvaluatorName); err != nil {
+		return err
+	}
+
+	dur := time.Since(start).Seconds()
+	metrics.EventsProcessed.WithLabelValues(riskEvaluatorName, string(status)).Inc()
+	metrics.EventProcessingDuration.WithLabelValues(riskEvaluatorName, string(status)).Observe(dur)
+	return nil
 }
 
 func parseRiskLevel(level string) domain.RiskLevel {

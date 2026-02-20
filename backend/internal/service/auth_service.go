@@ -18,9 +18,10 @@ type AuthService struct {
 }
 
 type TokenClaims struct {
-	UserID  uuid.UUID `json:"user_id"`
-	Email   string    `json:"email"`
-	Country string    `json:"country"`
+	UserID  uuid.UUID   `json:"user_id"`
+	Email   string      `json:"email"`
+	Role    domain.Role `json:"role"`
+	Country string      `json:"country"`
 	jwt.RegisteredClaims
 }
 
@@ -65,6 +66,7 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 		Email:        req.Email,
 		PasswordHash: string(hash),
 		Country:      req.Country,
+		Role:         domain.RoleUser,
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
@@ -123,6 +125,7 @@ func (s *AuthService) generateToken(user *domain.User) (string, error) {
 	claims := TokenClaims{
 		UserID:  user.ID,
 		Email:   user.Email,
+		Role:    user.Role,
 		Country: user.Country,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),

@@ -33,6 +33,11 @@ help:
 	@echo "  make help               Show this help message"
 
 # Docker commands
+
+docker-build: ## Build the API Docker image
+	docker build -t bravo-api:latest -f $(BACKEND_DIR)/Dockerfile $(BACKEND_DIR)
+	@echo "$(GREEN)✓ Docker image built: bravo-api:latest$(NC)"
+
 docker-up:
 	docker-compose up -d
 	@echo "$(GREEN)✓ Services are up$(NC)"

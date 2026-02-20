@@ -29,6 +29,7 @@ func JWTAuth(authService *service.AuthService) echo.MiddlewareFunc {
 			c.Set("user_id", claims.UserID)
 			c.Set("email", claims.Email)
 			c.Set("country", claims.Country)
+			c.Set("role", claims.Role)
 
 			return next(c)
 		}

@@ -16,6 +16,7 @@ type ApplicationRepository interface {
 	Create(ctx context.Context, app *domain.Application) error
 	FindByID(ctx context.Context, id uuid.UUID) (*domain.Application, error)
 	FindByUserID(ctx context.Context, userID uuid.UUID, country, status string, fromDate, toDate *time.Time, limit, offset int) ([]domain.Application, int, error)
+	FindAll(ctx context.Context, country, status string, fromDate, toDate *time.Time, limit, offset int) ([]domain.Application, int, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, notes *string) error
 	UpdateRiskAndStatus(ctx context.Context, id uuid.UUID, status domain.ApplicationStatus, riskLevel domain.RiskLevel, bankReason string) error
 }
@@ -105,6 +106,91 @@ func (r *applicationRepository) FindByUserID(ctx context.Context, userID uuid.UU
 
 	dataArgs := []any{userID}
 	dataIdx := 2
+
+	if country != "" {
+		dataQuery += fmt.Sprintf(" AND country = $%d", dataIdx)
+		dataArgs = append(dataArgs, country)
+		dataIdx++
+	}
+	if status != "" {
+		dataQuery += fmt.Sprintf(" AND status = $%d", dataIdx)
+		dataArgs = append(dataArgs, status)
+		dataIdx++
+	}
+	if fromDate != nil {
+		dataQuery += fmt.Sprintf(" AND created_at >= $%d", dataIdx)
+		dataArgs = append(dataArgs, *fromDate)
+		dataIdx++
+	}
+	if toDate != nil {
+		dataQuery += fmt.Sprintf(" AND created_at <= $%d", dataIdx)
+		dataArgs = append(dataArgs, *toDate)
+		dataIdx++
+	}
+
+	dataQuery += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d OFFSET $%d", dataIdx, dataIdx+1)
+	dataArgs = append(dataArgs, limit, offset)
+
+	rows, err := r.db.Query(ctx, dataQuery, dataArgs...)
+	if err != nil {
+		return nil, 0, fmt.Errorf("query applications: %w", err)
+	}
+	defer rows.Close()
+
+	var apps []domain.Application
+	for rows.Next() {
+		var app domain.Application
+		if err := rows.Scan(
+			&app.ID, &app.UserID, &app.Country, &app.FullName, &app.IdentityDocument,
+			&app.MonthlyIncome, &app.RequestedAmount, &app.Status, &app.RiskLevel,
+			&app.Notes, &app.CreatedAt, &app.UpdatedAt,
+		); err != nil {
+			return nil, 0, fmt.Errorf("scan application: %w", err)
+		}
+		apps = append(apps, app)
+	}
+
+	return apps, total, nil
+}
+
+func (r *applicationRepository) FindAll(ctx context.Context, country, status string, fromDate, toDate *time.Time, limit, offset int) ([]domain.Application, int, error) {
+	countQuery := `SELECT COUNT(*) FROM applications WHERE 1=1`
+	args := []any{}
+	argIdx := 1
+
+	if country != "" {
+		countQuery += fmt.Sprintf(" AND country = $%d", argIdx)
+		args = append(args, country)
+		argIdx++
+	}
+	if status != "" {
+		countQuery += fmt.Sprintf(" AND status = $%d", argIdx)
+		args = append(args, status)
+		argIdx++
+	}
+	if fromDate != nil {
+		countQuery += fmt.Sprintf(" AND created_at >= $%d", argIdx)
+		args = append(args, *fromDate)
+		argIdx++
+	}
+	if toDate != nil {
+		countQuery += fmt.Sprintf(" AND created_at <= $%d", argIdx)
+		args = append(args, *toDate)
+		argIdx++
+	}
+
+	var total int
+	if err := r.db.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, 0, fmt.Errorf("count applications: %w", err)
+	}
+
+	dataQuery := `
+		SELECT id, user_id, country, full_name, identity_document, monthly_income,
+		       requested_amount, status, risk_level, notes, created_at, updated_at
+		FROM applications WHERE 1=1`
+
+	dataArgs := []any{}
+	dataIdx := 1
 
 	if country != "" {
 		dataQuery += fmt.Sprintf(" AND country = $%d", dataIdx)

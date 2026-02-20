@@ -20,6 +20,7 @@ type handlerMockRepo struct {
 	lastTo      *time.Time
 	lastCountry string
 	lastStatus  string
+	listAll     bool
 }
 
 func (m *handlerMockRepo) Create(ctx context.Context, app *domain.Application) error { return nil }
@@ -33,6 +34,20 @@ func (m *handlerMockRepo) FindByUserID(ctx context.Context, userID uuid.UUID, co
 	m.lastTo = toDate
 	m.lastCountry = country
 	m.lastStatus = status
+	m.listAll = false
+
+	if m.listResp == nil {
+		return []domain.Application{}, m.listTotal, nil
+	}
+	return m.listResp, m.listTotal, nil
+}
+
+func (m *handlerMockRepo) FindAll(ctx context.Context, country, status string, fromDate, toDate *time.Time, limit, offset int) ([]domain.Application, int, error) {
+	m.lastFrom = fromDate
+	m.lastTo = toDate
+	m.lastCountry = country
+	m.lastStatus = status
+	m.listAll = true
 
 	if m.listResp == nil {
 		return []domain.Application{}, m.listTotal, nil
@@ -58,6 +73,7 @@ func TestHandler_List_ParsesDateFilters(t *testing.T) {
 	rec := httptest.NewRecorder()
 	ctx := e.NewContext(req, rec)
 	ctx.Set("user_id", uuid.New())
+	ctx.Set("role", domain.RoleUser)
 
 	if err := h.List(ctx); err != nil {
 		t.Fatalf("handler returned error: %v", err)
@@ -87,6 +103,7 @@ func TestHandler_List_InvalidDateFormat(t *testing.T) {
 	rec := httptest.NewRecorder()
 	ctx := e.NewContext(req, rec)
 	ctx.Set("user_id", uuid.New())
+	ctx.Set("role", domain.RoleUser)
 
 	_ = h.List(ctx)
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Sirpyerre/bravo-challenge/internal/domain"
+	"github.com/Sirpyerre/bravo-challenge/internal/metrics"
 	"github.com/Sirpyerre/bravo-challenge/internal/repository"
 	"github.com/Sirpyerre/bravo-challenge/internal/validation"
 	"github.com/Sirpyerre/bravo-challenge/pkg/rabbitmq"
@@ -82,6 +83,8 @@ func (s *ApplicationService) Create(ctx context.Context, userID uuid.UUID, req C
 		return nil, fmt.Errorf("crear solicitud: %w", err)
 	}
 
+	metrics.ApplicationsCreated.WithLabelValues(app.Country).Inc()
+
 	// Publicar evento para procesamiento asíncrono
 	s.publishEvent("application.created", domain.Event{
 		ID:            uuid.New().String(),
@@ -103,7 +106,7 @@ func (s *ApplicationService) publishEvent(routingKey string, event domain.Event)
 	s.publisher.Publish(routingKey, data)
 }
 
-func (s *ApplicationService) GetByID(ctx context.Context, id uuid.UUID) (*domain.Application, error) {
+func (s *ApplicationService) GetByID(ctx context.Context, requesterID uuid.UUID, role domain.Role, id uuid.UUID) (*domain.Application, error) {
 	app, err := s.appRepo.FindByID(ctx, id)
 	if err != nil {
 		return nil, fmt.Errorf("obtener solicitud: %w", err)
@@ -111,10 +114,13 @@ func (s *ApplicationService) GetByID(ctx context.Context, id uuid.UUID) (*domain
 	if app == nil {
 		return nil, fmt.Errorf("solicitud no encontrada")
 	}
+	if !role.IsPrivileged() && app.UserID != requesterID {
+		return nil, fmt.Errorf("acceso no permitido")
+	}
 	return app, nil
 }
 
-func (s *ApplicationService) List(ctx context.Context, userID uuid.UUID, req ListApplicationsRequest) (*ListApplicationsResponse, error) {
+func (s *ApplicationService) List(ctx context.Context, userID uuid.UUID, role domain.Role, req ListApplicationsRequest) (*ListApplicationsResponse, error) {
 	if req.Limit <= 0 {
 		req.Limit = 20
 	}
@@ -126,7 +132,17 @@ func (s *ApplicationService) List(ctx context.Context, userID uuid.UUID, req Lis
 		return nil, fmt.Errorf("to_date no puede ser anterior a from_date")
 	}
 
-	apps, total, err := s.appRepo.FindByUserID(ctx, userID, req.Country, req.Status, req.FromDate, req.ToDate, req.Limit, req.Offset)
+	var (
+		apps  []domain.Application
+		total int
+		err   error
+	)
+
+	if role.IsPrivileged() {
+		apps, total, err = s.appRepo.FindAll(ctx, req.Country, req.Status, req.FromDate, req.ToDate, req.Limit, req.Offset)
+	} else {
+		apps, total, err = s.appRepo.FindByUserID(ctx, userID, req.Country, req.Status, req.FromDate, req.ToDate, req.Limit, req.Offset)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("listar solicitudes: %w", err)
 	}
@@ -137,7 +153,10 @@ func (s *ApplicationService) List(ctx context.Context, userID uuid.UUID, req Lis
 	}, nil
 }
 
-func (s *ApplicationService) UpdateStatus(ctx context.Context, id uuid.UUID, req UpdateApplicationRequest) error {
+func (s *ApplicationService) UpdateStatus(ctx context.Context, requesterRole domain.Role, id uuid.UUID, req UpdateApplicationRequest) error {
+	if !requesterRole.IsPrivileged() {
+		return fmt.Errorf("acceso no permitido")
+	}
 	// Validar que el status sea válido
 	status := domain.ApplicationStatus(req.Status)
 	switch status {

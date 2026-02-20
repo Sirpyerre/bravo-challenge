@@ -8,6 +8,7 @@ import (
 	"github.com/Sirpyerre/bravo-challenge/internal/application/healthcheck"
 	"github.com/Sirpyerre/bravo-challenge/internal/config"
 	"github.com/Sirpyerre/bravo-challenge/internal/idempotency"
+	_ "github.com/Sirpyerre/bravo-challenge/internal/metrics" // registra métricas custom
 	"github.com/Sirpyerre/bravo-challenge/internal/repository"
 	"github.com/Sirpyerre/bravo-challenge/internal/service"
 	appwebsocket "github.com/Sirpyerre/bravo-challenge/internal/websocket"
@@ -17,6 +18,7 @@ import (
 	pkgrabbit "github.com/Sirpyerre/bravo-challenge/pkg/rabbitmq"
 	pkgredis "github.com/Sirpyerre/bravo-challenge/pkg/redis"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/labstack/echo-contrib/echoprometheus"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	amqp "github.com/rabbitmq/amqp091-go"
@@ -119,6 +121,15 @@ func newServer(cfg *config.Config) *server {
 	e := echo.New()
 	e.HideBanner = true
 
+	e.Use(echoprometheus.NewMiddlewareWithConfig(echoprometheus.MiddlewareConfig{
+		Namespace: "credit",
+		Skipper: func(c echo.Context) bool {
+			p := c.Path()
+			return p == "/metrics" || p == "/health" || p == "/health_dependencies"
+		},
+	}))
+	e.GET("/metrics", echoprometheus.NewHandler())
+
 	registerMiddleware(e, cfg, log)
 	registerRoutes(e, depChecker, authHandler, creditHandler, wsHandler, authService, idempotencySvc)
 
@@ -145,6 +156,13 @@ func registerMiddleware(e *echo.Echo, cfg *config.Config, log zerolog.Logger) {
 	})
 
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		Skipper: func(c echo.Context) bool {
+			p := c.Path()
+			if p == "" {
+				p = c.Request().URL.Path
+			}
+			return p == "/metrics" || p == "/health" || p == "/health_dependencies"
+		},
 		LogURI:      true,
 		LogStatus:   true,
 		LogMethod:   true,
@@ -154,7 +172,11 @@ func registerMiddleware(e *echo.Echo, cfg *config.Config, log zerolog.Logger) {
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			evt := log.Info()
 			if v.Error != nil {
-				evt = log.Error().Err(v.Error)
+				cause := v.Error
+				if he, ok := v.Error.(*echo.HTTPError); ok && he.Internal != nil {
+					cause = he.Internal
+				}
+				evt = log.Error().Err(cause)
 			}
 			evt.
 				Str("method", v.Method).
