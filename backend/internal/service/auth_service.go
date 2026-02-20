@@ -63,11 +63,16 @@ func (s *AuthService) Register(ctx context.Context, req RegisterRequest) (*AuthR
 		return nil, fmt.Errorf("hash password: %w", err)
 	}
 
+	role := domain.Role(req.Role)
+	if role != domain.RoleUser && role != domain.RoleAgent && role != domain.RoleAdmin {
+		role = domain.RoleUser
+	}
+
 	user := &domain.User{
 		Email:        req.Email,
 		PasswordHash: string(hash),
 		Country:      req.Country,
-		Role:         domain.Role(req.Role),
+		Role:         role,
 	}
 
 	if err := s.userRepo.Create(ctx, user); err != nil {
