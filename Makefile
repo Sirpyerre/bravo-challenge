@@ -48,9 +48,9 @@ swagger:
 	cd $(BACKEND_DIR) && swag init --dir ./cmd --generalInfo docs.go --output ./docs --parseDependency --parseInternal
 
 migrate:
-	psql -h localhost -U postgres -d bravo -f $(BACKEND_DIR)/migrations/001_init.sql
-	psql -h localhost -U postgres -d bravo -f $(BACKEND_DIR)/migrations/002_add_role_to_users.sql
-	psql -h localhost -U postgres -d bravo -f $(BACKEND_DIR)/migrations/003_pg_notify_trigger.sql
+	docker-compose exec -T postgres psql -U postgres -d bravo -f - < $(BACKEND_DIR)/migrations/001_init.sql
+	docker-compose exec -T postgres psql -U postgres -d bravo -f - < $(BACKEND_DIR)/migrations/002_add_role_to_users.sql
+	docker-compose exec -T postgres psql -U postgres -d bravo -f - < $(BACKEND_DIR)/migrations/003_pg_notify_trigger.sql
 
 clean:
 	rm -rf $(BACKEND_DIR)/bin

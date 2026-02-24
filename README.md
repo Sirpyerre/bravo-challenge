@@ -118,7 +118,7 @@ bravo/
 
 El mecanismo central del sistema es la pipeline asíncrona disparada por un trigger de PostgreSQL. La API solo escribe en la base de datos; el procesamiento de riesgo ocurre completamente de forma asíncrona.
 
-<img src="./docs/architecture-bravo-credit-app.svg" alt="Diagrama de arquitectura" width="800"/>
+<img src="./docs/architecture-bravo-credit-app.png" alt="Diagrama de arquitectura" width="800"/>
 
 **Pasos detallados:**
 
@@ -214,6 +214,69 @@ El sistema tiene tres roles. El JWT incluye el rol en sus claims y cada endpoint
 
 ---
 
+## Frontend
+
+Aplicación web construida con **React 18 + TypeScript + Vite**. En desarrollo corre en `http://localhost:3500`; en Kubernetes se sirve en `http://bravo.local`.
+
+### Stack técnico
+
+| Tecnología | Versión | Propósito |
+|---|---|---|
+| React | 18.3 | Librería UI |
+| TypeScript | 5.4 | Tipado estático |
+| Vite | 5.2 | Bundler y servidor de desarrollo |
+| React Router | 6.22 | Enrutamiento client-side (SPA) |
+| TanStack Query | 5.50 | Estado del servidor, caché y re-fetch automático |
+| Axios | 1.6 | Cliente HTTP con interceptores para JWT |
+| Tailwind CSS | 3.4 | Estilos utilitarios |
+| Sonner | 1.4 | Notificaciones toast |
+| Lucide React | 0.367 | Iconografía |
+
+### Páginas
+
+| Ruta | Auth | Descripción |
+|---|---|---|
+| `/login` | No | Login y registro (país: MX/BR, rol: USER/AGENT) |
+| `/app` | Sí | Dashboard principal con filtros, tabla paginada y detalle |
+
+### Funcionalidades principales
+
+- **Autenticación JWT**: token en `localStorage`; inyectado automáticamente en cada petición. Interceptor de 401 redirige al login si el token expira.
+- **Listado paginado** con filtros por país, estado y rango de fechas.
+- **Detalle con copia de ID**: drawer lateral con todos los campos de la solicitud y botón para copiar el UUID al portapapeles.
+- **Actualización de estado**: agentes y admins pueden cambiar el estado desde el propio drawer.
+- **Real-time vía WebSocket**: hook `useRealtime` abre una conexión `ws://` autenticada con JWT; las filas parpadean al recibir una actualización del servidor.
+- **Indicador de conexión**: el encabezado muestra un punto verde "Realtime activo" mientras el WebSocket está conectado.
+
+### Estructura de fuentes
+
+```
+frontend/src/
+├── api/          # Cliente Axios + endpoints (applications, auth)
+├── components/   # Layout, RequestTable, RequestDetailDrawer, CreateRequestForm
+├── hooks/        # useRealtime (WebSocket)
+├── pages/        # LoginPage, DashboardPage
+├── providers/    # AuthProvider (contexto JWT)
+└── types.ts      # Interfaces TypeScript compartidas
+```
+
+### Correr en desarrollo
+
+```bash
+cd frontend
+npm install
+npm run dev          # http://localhost:3500
+```
+
+La variable `VITE_API_BASE_URL` apunta al backend (por defecto `http://localhost:8000`):
+
+```
+# frontend/.env.development
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+---
+
 ## Requisitos previos
 
 - Go 1.22 o superior
@@ -248,6 +311,9 @@ make run
 ```
 
 El backend queda disponible en `http://localhost:8080`.
+
+Frontend disponible en `http://localhost:3500`.
+
 
 La documentación Swagger está en `http://localhost:8080/swagger/index.html`.
 
