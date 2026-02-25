@@ -17,6 +17,13 @@ spec:
         prometheus.io/port: "8000"
         prometheus.io/path: "/metrics"
     spec:
+      initContainers:
+        - name: wait-for-rabbitmq
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z rabbitmq-service 5672; do echo "Waiting for RabbitMQ..."; sleep 3; done']
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z postgres-service 5432; do echo "Waiting for PostgreSQL..."; sleep 3; done']
       containers:
         - name: bravo-api
           image: bravo-api:latest
@@ -67,8 +74,9 @@ spec:
             httpGet:
               path: /health
               port: 8000
-            initialDelaySeconds: 20
+            initialDelaySeconds: 30
             periodSeconds: 30
+            failureThreshold: 3
           resources:
             requests:
               memory: "128Mi"

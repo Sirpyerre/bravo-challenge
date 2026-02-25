@@ -12,7 +12,18 @@ export function RequestDetailDrawer({ app, onClose }: { app: Application | null;
 
   const handleCopyId = () => {
     if (!app) return;
-    navigator.clipboard.writeText(app.id);
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(app.id);
+    } else {
+      const el = document.createElement("textarea");
+      el.value = app.id;
+      el.style.position = "fixed";
+      el.style.opacity = "0";
+      document.body.appendChild(el);
+      el.select();
+      document.execCommand("copy");
+      document.body.removeChild(el);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
@@ -53,16 +64,16 @@ export function RequestDetailDrawer({ app, onClose }: { app: Application | null;
         <button className="btn btn-ghost" onClick={onClose}>Cerrar</button>
       </div>
 
-      <button
-        onClick={handleCopyId}
-        title="Copiar ID"
-        className="mx-4 mt-3 flex w-[calc(100%-2rem)] items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2 text-left font-mono text-xs text-muted transition hover:border-primary hover:text-foreground"
-      >
-        <span className="truncate">{app.id}</span>
-        <span className="shrink-0 text-[10px] uppercase tracking-wide">
+      <div className="mx-4 mt-3 flex w-[calc(100%-2rem)] items-center justify-between gap-2 rounded-md border border-border bg-card px-3 py-2">
+        <span className="select-all break-all font-mono text-xs text-muted">{app.id}</span>
+        <button
+          onClick={handleCopyId}
+          title="Copiar ID"
+          className="shrink-0 text-[10px] uppercase tracking-wide text-muted transition hover:text-foreground"
+        >
           {copied ? "✓ Copiado" : "Copiar"}
-        </span>
-      </button>
+        </button>
+      </div>
 
       <div className="space-y-4 p-4">
         <div className="grid grid-cols-2 gap-3 text-sm text-muted">

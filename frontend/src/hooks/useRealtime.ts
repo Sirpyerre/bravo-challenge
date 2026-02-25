@@ -11,6 +11,12 @@ interface EventMessage {
 export function useRealtime(token: string | null, onEvent?: (msg: EventMessage) => void) {
   const [connected, setConnected] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
+  const onEventRef = useRef(onEvent);
+
+  // Mantener la ref actualizada sin recrear el WebSocket
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  });
 
   useEffect(() => {
     if (!token) {
@@ -28,7 +34,7 @@ export function useRealtime(token: string | null, onEvent?: (msg: EventMessage) 
     ws.onmessage = (evt) => {
       try {
         const msg = JSON.parse(evt.data);
-        onEvent?.(msg);
+        onEventRef.current?.(msg);
       } catch (err) {
         console.error("WS parse error", err);
       }
@@ -37,7 +43,7 @@ export function useRealtime(token: string | null, onEvent?: (msg: EventMessage) 
     return () => {
       ws.close();
     };
-  }, [token, onEvent]);
+  }, [token]); // Solo reconecta cuando cambia el token
 
   return connected;
 }

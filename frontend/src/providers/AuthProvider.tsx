@@ -16,8 +16,14 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
-  const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) setAuthToken(saved);
+    return saved;
+  });
+  const [userEmail, setUserEmail] = useState<string | null>(
+    () => localStorage.getItem(STORAGE_USER)
+  );
 
   const logout = () => {
     setToken(null);
@@ -28,17 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   useEffect(() => {
-    const savedToken = localStorage.getItem(STORAGE_KEY);
-    const savedUser = localStorage.getItem(STORAGE_USER);
-    if (savedToken) {
-      setToken(savedToken);
-      setAuthToken(savedToken);
-    }
-    if (savedUser) setUserEmail(savedUser);
-  }, []);
-
-  useEffect(() => {
-    setUnauthorizedHandler(() => logout);
+    setUnauthorizedHandler(logout);
     return () => setUnauthorizedHandler(null);
   });
 

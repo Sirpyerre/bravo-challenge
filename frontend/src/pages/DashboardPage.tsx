@@ -52,11 +52,21 @@ export default function DashboardPage() {
     (msg: any) => {
       if (msg?.application_id) {
         setHighlightId(msg.application_id);
-        qc.invalidateQueries({ queryKey: ["applications"] });
-        toast.success(`Solicitud ${msg.application_id} actualizada`, {
-          id: `update-${msg.application_id}`,
+        qc.refetchQueries({ queryKey: ["applications"] });
+
+        // Actualizar el drawer inmediatamente si la solicitud está abierta
+        setSelected((prev) => {
+          if (prev?.id !== msg.application_id) return prev;
+          return {
+            ...prev,
+            status: msg.data?.status ?? prev.status,
+            risk_level: msg.data?.risk_level ?? prev.risk_level,
+            notes: msg.data?.reason ?? prev.notes,
+          };
+        });
+
+        toast.success(`Solicitud actualizada: ${msg.data?.status ?? ""}`, {
           duration: 2400,
-          position: "bottom-right",
         });
         setTimeout(() => setHighlightId(null), 1600);
       }

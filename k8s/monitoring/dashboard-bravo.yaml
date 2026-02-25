@@ -1,0 +1,207 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bravo-dashboard
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  bravo-dashboard.json: |
+    {
+      "title": "Bravo API",
+      "uid": "bravo-api",
+      "schemaVersion": 38,
+      "version": 1,
+      "refresh": "10s",
+      "time": { "from": "now-1h", "to": "now" },
+      "panels": [
+
+        { "type": "row", "id": 1, "title": "HTTP", "gridPos": { "x": 0, "y": 0, "w": 24, "h": 1 } },
+
+        {
+          "id": 2, "type": "timeseries",
+          "title": "Request Rate (req/s)",
+          "gridPos": { "x": 0, "y": 1, "w": 12, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "sum by (method, status) (rate(credit_requests_total[1m]))",
+              "legendFormat": "{{method}} {{status}}"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "reqps" } }
+        },
+
+        {
+          "id": 3, "type": "timeseries",
+          "title": "Latencia HTTP (p50 / p95 / p99)",
+          "gridPos": { "x": 12, "y": 1, "w": 12, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.50, sum by (le) (rate(credit_request_duration_seconds_bucket[1m])))",
+              "legendFormat": "p50"
+            },
+            {
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(credit_request_duration_seconds_bucket[1m])))",
+              "legendFormat": "p95"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(credit_request_duration_seconds_bucket[1m])))",
+              "legendFormat": "p99"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "s" } }
+        },
+
+        { "type": "row", "id": 10, "title": "Solicitudes de Crédito", "gridPos": { "x": 0, "y": 9, "w": 24, "h": 1 } },
+
+        {
+          "id": 11, "type": "stat",
+          "title": "Total Solicitudes (todas)",
+          "gridPos": { "x": 0, "y": 10, "w": 4, "h": 4 },
+          "datasource": "Prometheus",
+          "targets": [
+            { "expr": "sum(credit_applications_created_total)", "legendFormat": "Total" }
+          ],
+          "fieldConfig": { "defaults": { "unit": "short" } }
+        },
+
+        {
+          "id": 12, "type": "stat",
+          "title": "Solicitudes MX",
+          "gridPos": { "x": 4, "y": 10, "w": 4, "h": 4 },
+          "datasource": "Prometheus",
+          "targets": [
+            { "expr": "sum(credit_applications_created_total{country=\"MX\"})", "legendFormat": "MX" }
+          ],
+          "fieldConfig": { "defaults": { "unit": "short" } }
+        },
+
+        {
+          "id": 13, "type": "stat",
+          "title": "Solicitudes BR",
+          "gridPos": { "x": 8, "y": 10, "w": 4, "h": 4 },
+          "datasource": "Prometheus",
+          "targets": [
+            { "expr": "sum(credit_applications_created_total{country=\"BR\"})", "legendFormat": "BR" }
+          ],
+          "fieldConfig": { "defaults": { "unit": "short" } }
+        },
+
+        {
+          "id": 14, "type": "timeseries",
+          "title": "Solicitudes Creadas por País (rate 1m)",
+          "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "sum by (country) (rate(credit_applications_created_total[1m]))",
+              "legendFormat": "{{country}}"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "reqps" } }
+        },
+
+        { "type": "row", "id": 20, "title": "Workers", "gridPos": { "x": 0, "y": 18, "w": 24, "h": 1 } },
+
+        {
+          "id": 21, "type": "timeseries",
+          "title": "Eventos Procesados por Worker (rate 1m)",
+          "gridPos": { "x": 0, "y": 19, "w": 12, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "sum by (worker, status) (rate(credit_events_processed_total[1m]))",
+              "legendFormat": "{{worker}} / {{status}}"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "reqps" } }
+        },
+
+        {
+          "id": 22, "type": "timeseries",
+          "title": "Duración de Procesamiento por Worker (p95)",
+          "gridPos": { "x": 12, "y": 19, "w": 12, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum by (worker, le) (rate(credit_event_processing_duration_seconds_bucket[1m])))",
+              "legendFormat": "{{worker}} p95"
+            },
+            {
+              "expr": "histogram_quantile(0.50, sum by (worker, le) (rate(credit_event_processing_duration_seconds_bucket[1m])))",
+              "legendFormat": "{{worker}} p50"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "s" } }
+        },
+
+        {
+          "id": 23, "type": "timeseries",
+          "title": "Errores de Workers (rate 1m)",
+          "gridPos": { "x": 0, "y": 27, "w": 12, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "sum by (worker, reason) (rate(credit_events_errors_total[1m]))",
+              "legendFormat": "{{worker}} / {{reason}}"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "reqps", "color": { "fixedColor": "red", "mode": "fixed" } } }
+        },
+
+        {
+          "id": 24, "type": "stat",
+          "title": "Total Errores Workers",
+          "gridPos": { "x": 12, "y": 27, "w": 6, "h": 4 },
+          "datasource": "Prometheus",
+          "targets": [
+            { "expr": "sum(credit_events_errors_total)", "legendFormat": "Errores" }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 10 }
+                ]
+              }
+            }
+          }
+        },
+
+        { "type": "row", "id": 30, "title": "Idempotencia", "gridPos": { "x": 0, "y": 35, "w": 24, "h": 1 } },
+
+        {
+          "id": 31, "type": "timeseries",
+          "title": "Idempotencia: Hits vs Misses (rate 1m)",
+          "gridPos": { "x": 0, "y": 36, "w": 12, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "sum by (result) (rate(credit_idempotency_hits_total[1m]))",
+              "legendFormat": "{{result}}"
+            }
+          ],
+          "fieldConfig": { "defaults": { "unit": "reqps" } }
+        },
+
+        {
+          "id": 32, "type": "piechart",
+          "title": "Idempotencia: Distribución Total",
+          "gridPos": { "x": 12, "y": 36, "w": 12, "h": 8 },
+          "datasource": "Prometheus",
+          "targets": [
+            {
+              "expr": "sum by (result) (credit_idempotency_hits_total)",
+              "legendFormat": "{{result}}"
+            }
+          ]
+        }
+
+      ]
+    }
