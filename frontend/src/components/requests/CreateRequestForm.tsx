@@ -26,7 +26,7 @@ export function CreateRequestForm() {
     monthly <= 0 ||
     requested <= 0;
 
-  const { mutateAsync, isPending } = useMutation({
+  const { mutate, isPending } = useMutation({
     mutationFn: async () => {
       return createApplication({
         country: form.country,
@@ -104,7 +104,7 @@ export function CreateRequestForm() {
       <button
         className="btn btn-primary mt-4 w-full"
         disabled={isInvalid || isPending}
-        onClick={() => mutateAsync()}
+        onClick={() => mutate()}
       >
         {isPending ? "Creando..." : "Crear"}
       </button>

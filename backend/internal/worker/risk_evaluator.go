@@ -100,6 +100,22 @@ func (w *RiskEvaluator) handle(ctx context.Context, body []byte) error {
 			Str("application_id", app.ID.String()).
 			Str("country", app.Country).
 			Msg("async country: marked as VALIDATING, waiting for bank webhook callback")
+
+		// Notificar al frontend del cambio PENDING → VALIDATING vía WebSocket
+		validatingEvent := domain.Event{
+			ID:            uuid.New().String(),
+			Type:          "application.updated",
+			ApplicationID: app.ID,
+			UserID:        app.UserID,
+			Data: map[string]any{
+				"status": domain.StatusValidating,
+				"reason": "Evaluación enviada al banco, esperando respuesta",
+			},
+		}
+		if data, err := json.Marshal(validatingEvent); err == nil {
+			w.publisher.Publish("application.updated", data)
+		}
+
 		return w.processedRepo.MarkProcessed(ctx, event.ID, event.Type, riskEvaluatorName)
 	}
 
